@@ -578,33 +578,37 @@ function openLeadDetailModal(leadId) {
   const rating = lead.bodyCondition;
   const ratingBadge = document.getElementById("lead-detail-rating-badge");
   const ratingText = document.getElementById("lead-detail-rating-text");
-  if (rating !== undefined && rating !== null) {
-    ratingBadge.innerText = `${rating}/10`;
-    ratingBadge.style.display = "inline-block";
-    if (rating >= 8) ratingText.innerText = "Excellent";
-    else if (rating >= 6) ratingText.innerText = "Good";
-    else if (rating >= 4) ratingText.innerText = "Average";
-    else ratingText.innerText = "Poor";
-  } else {
-    ratingBadge.innerText = "—";
-    ratingText.innerText = "Not Rated";
+  if (ratingBadge && ratingText) {
+    if (rating !== undefined && rating !== null) {
+      ratingBadge.innerText = `${rating}/10`;
+      ratingBadge.style.display = "inline-block";
+      if (rating >= 8) ratingText.innerText = "Excellent";
+      else if (rating >= 6) ratingText.innerText = "Good";
+      else if (rating >= 4) ratingText.innerText = "Average";
+      else ratingText.innerText = "Poor";
+    } else {
+      ratingBadge.innerText = "—";
+      ratingText.innerText = "Not Rated";
+    }
   }
 
   // Accessories present
   const optionsContainer = document.getElementById("lead-detail-options");
-  optionsContainer.innerHTML = "";
-  const options = lead.optionsPresent || [];
-  if (options.length === 0) {
-    optionsContainer.innerHTML =
-      '<span style="color:var(--text-secondary); font-size:0.8rem;">No accessories listed.</span>';
-  } else {
-    options.forEach((opt) => {
-      const badge = document.createElement("span");
-      badge.style.cssText =
-        "background:rgba(14, 165, 233, 0.1); color:var(--primary-color); border:1px solid rgba(14, 165, 233, 0.2); font-size:0.75rem; font-weight:600; padding:4px 8px; border-radius:4px; margin-right: 4px; margin-bottom: 4px; display: inline-block;";
-      badge.innerText = opt;
-      optionsContainer.appendChild(badge);
-    });
+  if (optionsContainer) {
+    optionsContainer.innerHTML = "";
+    const options = lead.optionsPresent || [];
+    if (options.length === 0) {
+      optionsContainer.innerHTML =
+        '<span style="color:var(--text-secondary); font-size:0.8rem;">No accessories listed.</span>';
+    } else {
+      options.forEach((opt) => {
+        const badge = document.createElement("span");
+        badge.style.cssText =
+          "background:rgba(14, 165, 233, 0.1); color:var(--primary-color); border:1px solid rgba(14, 165, 233, 0.2); font-size:0.75rem; font-weight:600; padding:4px 8px; border-radius:4px; margin-right: 4px; margin-bottom: 4px; display: inline-block;";
+        badge.innerText = opt;
+        optionsContainer.appendChild(badge);
+      });
+    }
   }
 
   // Populate L1 agents dropdown
@@ -640,7 +644,7 @@ function openLeadDetailModal(leadId) {
     document.getElementById("lead-detail-val-recommended").innerText =
       Utils.formatCurrency(l1.recommendedPrice || 0);
     document.getElementById("lead-detail-val-offered").innerText =
-      Utils.formatCurrency(l1.offeredPrice || l1.agreedPrice || 0);
+      Utils.formatCurrency(l1.offeredPrice || l1.agreedPrice || l1.recommendedPrice || 0);
     document.getElementById("lead-detail-val-accident").innerText =
       l1.accidentHistory || "None logged";
     document.getElementById("lead-detail-val-chassis").innerText =
@@ -658,7 +662,7 @@ function closeLeadDetailModal() {
   currentViewingLeadId = null;
 }
 
-function saveL1AssignmentFromModal() {
+async function saveL1AssignmentFromModal() {
   if (!currentViewingLeadId) return;
   const agentSelect = document.getElementById("lead-detail-agent-select");
   const agentId = agentSelect.value;
@@ -679,11 +683,11 @@ function saveL1AssignmentFromModal() {
       leads[idx].status = "assigned";
     }
 
-    Api.saveLeads(leads);
+    await Api.saveLeads(leads);
     refreshSidebarBadges();
 
     const agent = Api.getUsers().find((u) => u.id === agentId);
-    Api.logAction(
+    await Api.logAction(
       user.id,
       "L1_AGENT_ASSIGNED",
       "leads",
@@ -959,7 +963,7 @@ function selectL2Lead(leadId) {
     lead.expectedPrice * 0.8;
   const agreedVal =
     (lead.l1Details &&
-      (lead.l1Details.agreedPrice || lead.l1Details.offeredPrice)) ||
+      (lead.l1Details.agreedPrice || lead.l1Details.offeredPrice || lead.l1Details.recommendedPrice)) ||
     lead.expectedPrice;
   document.getElementById("l2-pricing-expected").innerText =
     Utils.formatCurrency(lead.expectedPrice);
@@ -1089,11 +1093,11 @@ function selectL2Lead(leadId) {
 }
 
 // L2 Action Handlers
-function handleL2Approve() {
+async function handleL2Approve() {
   if (!selectedL2LeadId) return;
   const user = Auth.getCurrentUser();
   const lead = Api.getLeadById(selectedL2LeadId);
-  Api.updateLeadStatus(
+  await Api.updateLeadStatus(
     selectedL2LeadId,
     "approved",
     user.id,
@@ -1126,7 +1130,7 @@ function openRejectDialog() {
 function closeRejectDialog() {
   document.getElementById("reject-modal").style.display = "none";
 }
-function handleL2Reject() {
+async function handleL2Reject() {
   const reason = document.getElementById("reject-reason").value.trim();
   if (!reason) {
     alert("Please enter a rejection reason.");
@@ -1134,7 +1138,7 @@ function handleL2Reject() {
   }
   const user = Auth.getCurrentUser();
   const lead = Api.getLeadById(selectedL2LeadId);
-  Api.updateLeadStatus(
+  await Api.updateLeadStatus(
     selectedL2LeadId,
     "rejected",
     user.id,
@@ -1221,6 +1225,7 @@ function loadL3Panel() {
     const amount = lead.l1Details
       ? lead.l1Details.agreedPrice ||
         lead.l1Details.offeredPrice ||
+        lead.l1Details.recommendedPrice ||
         lead.expectedPrice
       : lead.expectedPrice;
     const payMode = (lead.l1Details && lead.l1Details.paymentMode) || "NEFT";
@@ -1262,25 +1267,46 @@ function selectL3Lead(leadId) {
     `${lead.make || ""} ${lead.model}`;
   document.getElementById("l3-reg-no").innerText = lead.vehicleNumber;
   const agreedPrice = lead.l1Details
-    ? lead.l1Details.agreedPrice || lead.l1Details.offeredPrice
+    ? lead.l1Details.agreedPrice || lead.l1Details.offeredPrice || lead.l1Details.recommendedPrice
     : lead.expectedPrice;
   document.getElementById("l3-price-agreed").innerText =
     Utils.formatCurrency(agreedPrice);
 
-  // Bank Coordinates
-  const bank =
-    lead.l1Details && lead.l1Details.bankDetails
-      ? lead.l1Details.bankDetails
-      : {
-          accountHolder: lead.ownerName,
-          bankName: "HDFC Bank Ltd",
-          accountNumber: "50100455667889",
-          ifscCode: "HDFC0000240",
-        };
-  document.getElementById("payout-acc-holder").innerText = bank.accountHolder;
-  document.getElementById("payout-bank-name").innerText = bank.bankName;
-  document.getElementById("payout-acc-number").innerText = bank.accountNumber;
-  document.getElementById("payout-ifsc").innerText = bank.ifscCode;
+  // Payment Coordinates — dynamic based on payment mode
+  const payMode = (lead.l1Details && lead.l1Details.paymentMode) || "bank";
+  const payDetails = (lead.l1Details && lead.l1Details.paymentDetails) || {};
+  const coordsBox = document.getElementById("l3-payment-coordinates-box");
+
+  const copyIconSvg = (text, name) =>
+    text
+      ? `<svg onclick="copyToClipboard('${text.replace(/'/g, "\\'")}', '${name}')" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer; margin-left:6px; opacity:0.7; transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`
+      : "";
+
+  if (payMode === "upi") {
+    const upiId = payDetails.upiId || "—";
+    coordsBox.innerHTML = `
+      <div class="vahan-row"><span>Payment Mode</span><div style="display:flex; align-items:center;"><strong style="color:var(--primary-color);">UPI</strong></div></div>
+      <div class="vahan-row"><span>UPI ID</span><div style="display:flex; align-items:center;"><strong style="font-family:monospace;">${upiId}</strong>${copyIconSvg(upiId, 'UPI ID')}</div></div>
+    `;
+  } else if (payMode === "cash") {
+    coordsBox.innerHTML = `
+      <div class="vahan-row"><span>Payment Mode</span><div style="display:flex; align-items:center;"><strong style="color:var(--warning-color);">Cash</strong></div></div>
+      <div class="vahan-row"><span>Cash Handover</span><div style="display:flex; align-items:center;"><strong style="color:var(--success-color);">✓ Confirmed by Agent</strong></div></div>
+    `;
+  } else {
+    // Bank transfer (default)
+    const holder = payDetails.accountHolder || lead.ownerName || "—";
+    const bankName = payDetails.bankName || "—";
+    const accNum = payDetails.accountNumber || "—";
+    const ifsc = payDetails.ifscCode || "—";
+    coordsBox.innerHTML = `
+      <div class="vahan-row"><span>Payment Mode</span><div style="display:flex; align-items:center;"><strong style="color:var(--info-color);">Bank Transfer</strong></div></div>
+      <div class="vahan-row"><span>Account Holder</span><div style="display:flex; align-items:center;"><strong>${holder}</strong>${copyIconSvg(holder, 'Account Holder')}</div></div>
+      <div class="vahan-row"><span>Bank Name</span><div style="display:flex; align-items:center;"><strong>${bankName}</strong>${copyIconSvg(bankName, 'Bank Name')}</div></div>
+      <div class="vahan-row"><span>Account Number</span><div style="display:flex; align-items:center;"><strong style="font-family:monospace;">${accNum}</strong>${copyIconSvg(accNum, 'Account Number')}</div></div>
+      <div class="vahan-row"><span>IFSC Code</span><div style="display:flex; align-items:center;"><strong style="font-family:monospace;">${ifsc}</strong>${copyIconSvg(ifsc, 'IFSC Code')}</div></div>
+    `;
+  }
 
   // KYC Documents
   const l3MediaBox = document.getElementById("l3-media-gallery");
@@ -1325,14 +1351,15 @@ function selectL3Lead(leadId) {
   } else if (lead.status === "payment_initiated") {
     form.style.display = "none";
     completedMessage.style.display = "block";
+    const payDtls = (lead.l3Details && lead.l3Details.paymentDetails) || lead.paymentDetails || {};
     document.getElementById("stage-1-saved-utr").innerText =
-      lead.paymentDetails.utrNumber;
+      payDtls.utrNumber || "—";
     stage2Box.style.opacity = "1";
     stage2Box.style.pointerEvents = "auto";
   }
 }
 
-function handleStage1Initiate(event) {
+async function handleStage1Initiate(event) {
   event.preventDefault();
   if (!selectedL3LeadId) return;
   const utr = document.getElementById("payout-utr").value.trim();
@@ -1343,16 +1370,21 @@ function handleStage1Initiate(event) {
   const idx = leads.findIndex((l) => l.id === selectedL3LeadId);
   if (idx !== -1) {
     leads[idx].status = "payment_initiated";
-    leads[idx].paymentDetails = {
-      utrNumber: utr,
-      receiptUrl: receipt,
-      amount: lead.l1Details
-        ? lead.l1Details.agreedPrice || lead.l1Details.offeredPrice
-        : lead.expectedPrice,
-      initiatedBy: user.id,
+    leads[idx].l3Details = {
+      ...(leads[idx].l3Details || {}),
+      paymentDetails: {
+        utrNumber: utr,
+        receiptUrl: receipt,
+        amount: lead.l1Details
+          ? lead.l1Details.agreedPrice || lead.l1Details.offeredPrice || lead.l1Details.recommendedPrice
+          : lead.expectedPrice,
+        initiatedBy: user.id,
+      },
     };
-    Api.saveLeads(leads);
-    Api.logAction(
+    // Keep root-level reference for in-memory reads
+    leads[idx].paymentDetails = leads[idx].l3Details.paymentDetails;
+    await Api.saveLeads(leads);
+    await Api.logAction(
       user.id,
       "PAYMENT_INITIATED",
       "leads",
@@ -1366,7 +1398,7 @@ function handleStage1Initiate(event) {
   refreshSidebarBadges();
 }
 
-function handleStage2Confirm() {
+async function handleStage2Confirm() {
   if (!selectedL3LeadId) return;
   const user = Auth.getCurrentUser();
   const lead = Api.getLeadById(selectedL3LeadId);
@@ -1374,9 +1406,15 @@ function handleStage2Confirm() {
   const idx = leads.findIndex((l) => l.id === selectedL3LeadId);
   if (idx !== -1) {
     leads[idx].status = "payment_confirmed";
-    leads[idx].paymentDetails.confirmedAt = new Date().toISOString();
-    Api.saveLeads(leads);
-    Api.logAction(
+    const payDtls = (leads[idx].l3Details && leads[idx].l3Details.paymentDetails) || leads[idx].paymentDetails || {};
+    payDtls.confirmedAt = new Date().toISOString();
+    leads[idx].l3Details = {
+      ...(leads[idx].l3Details || {}),
+      paymentDetails: payDtls,
+    };
+    leads[idx].paymentDetails = payDtls;
+    await Api.saveLeads(leads);
+    await Api.logAction(
       user.id,
       "PAYMENT_CONFIRMED",
       "leads",
@@ -1563,7 +1601,7 @@ function assignPickerFromBtn(leadId, btn) {
   }
 }
 
-function assignPicker(leadId, pickerId) {
+async function assignPicker(leadId, pickerId) {
   if (!pickerId) {
     Utils.showAlert("Please select a picker agent first.", "warning");
     return;
@@ -1578,9 +1616,9 @@ function assignPicker(leadId, pickerId) {
     leads[idx].scheduledDate = new Date(
       Date.now() + 3600000 * 24,
     ).toISOString();
-    Api.saveLeads(leads);
+    await Api.saveLeads(leads);
     refreshSidebarBadges();
-    Api.logAction(
+    await Api.logAction(
       user.id,
       "PICKER_ASSIGNED",
       "leads",
@@ -1701,7 +1739,7 @@ function closeEditUserModal() {
   currentEditingUserId = null;
 }
 
-function saveUserDetails() {
+async function saveUserDetails() {
   if (!currentEditingUserId) return;
   const name = document.getElementById("edit-user-name").value.trim();
   const email = document.getElementById("edit-user-email").value.trim();
@@ -1744,8 +1782,8 @@ function saveUserDetails() {
     users[idx].permissions = newPerms;
     users[idx].is_active = !isBlocked;
 
-    Api.saveUsers(users);
-    Api.logAction(
+    await Api.saveUsers(users);
+    await Api.logAction(
       Auth.getCurrentUser().id,
       "USER_UPDATED",
       "users",
@@ -1774,7 +1812,7 @@ function openNewUserModal() {
 function closeNewUserModal() {
   document.getElementById("user-modal").style.display = "none";
 }
-function handleCreateUser() {
+async function handleCreateUser() {
   const name = document.getElementById("new-user-name").value.trim();
   const email = document.getElementById("new-user-email").value.trim();
   const phone = document.getElementById("new-user-phone").value.trim();
@@ -1805,8 +1843,8 @@ function handleCreateUser() {
     is_active: true,
   };
   users.push(newUser);
-  Api.saveUsers(users);
-  Api.logAction(
+  await Api.saveUsers(users);
+  await Api.logAction(
     Auth.getCurrentUser().id,
     "USER_ENROLLED",
     "users",
@@ -1845,10 +1883,103 @@ function loadAuditPanel() {
   paginated.forEach((l) => {
     const userName = getAgentName(l.userId);
     const tr = document.createElement("tr");
+
+    // Attempt to parse newVal as JSON if it looks like a JSON object/array
+    let parsedNew = null;
+    if (typeof l.newVal === 'string' && (l.newVal.startsWith('{') || l.newVal.startsWith('['))) {
+      try {
+        parsedNew = JSON.parse(l.newVal);
+      } catch (e) {
+        parsedNew = null;
+      }
+    }
+
+    // Helper to format permissions
+    const formatPerms = (perms) => {
+      if (!perms || perms.length === 0) return 'None';
+      const mapping = {
+        l1: 'L1 Agent',
+        l2: 'L2 Manager',
+        l3: 'L3 Payments',
+        l4_picker: 'L4 Picker',
+        l4_scrapper: 'L4 Scrapper',
+        onsite_inspect: 'Onsite Inspector',
+        super_admin: 'Super Admin'
+      };
+      return perms.map(p => mapping[p] || p).join(', ');
+    };
+
+    let detail = '';
+    const action = l.action || '';
+
+    if (action === 'USER_ENROLLED') {
+      if (parsedNew) {
+        detail = `Enrolled staff member: <strong>${parsedNew.name}</strong> (${parsedNew.email}) &bull; Roles: [${formatPerms(parsedNew.permissions)}]`;
+      } else {
+        detail = `Enrolled staff member: ${l.newVal}`;
+      }
+    } else if (action === 'USER_UPDATED') {
+      if (parsedNew) {
+        const activeText = parsedNew.is_active ? 'Active' : 'Blocked';
+        detail = `Updated staff member: <strong>${parsedNew.name}</strong> (${parsedNew.email}) &bull; Roles: [${formatPerms(parsedNew.permissions)}] &bull; Status: ${activeText}`;
+      } else {
+        detail = `Updated staff member: ${l.newVal}`;
+      }
+    } else if (action === 'LEAD_CREATED') {
+      if (parsedNew) {
+        detail = `Registered vehicle <strong>${parsedNew.vehicle_number || parsedNew.vehicleNumber || ''}</strong> (${parsedNew.make || ''} ${parsedNew.model || ''}) &bull; Owner: ${parsedNew.owner_name || parsedNew.ownerName || ''}`;
+      } else {
+        detail = `Created lead: ${l.newVal}`;
+      }
+    } else if (action === 'LEAD_ASSIGNED') {
+      detail = l.newVal ? `Assigned to: <strong>${l.newVal}</strong>` : 'Lead assigned';
+    } else if (action === 'L1_SUBMITTED' || action === 'VALUATION_SUBMITTED') {
+      if (parsedNew) {
+        const agreed = parsedNew.l1Details ? (parsedNew.l1Details.agreedPrice || parsedNew.l1Details.offeredPrice || parsedNew.l1Details.recommendedPrice) : null;
+        const priceText = agreed ? ` at agreed price: ${Utils.formatCurrency(agreed)}` : '';
+        detail = `L1 physical valuation submitted${priceText}`;
+      } else {
+        detail = `L1 valuation details submitted: ${l.newVal || ''}`;
+      }
+    } else if (action.startsWith('L2_')) {
+      const status = action.replace('L2_', '').toLowerCase();
+      const statusLabels = {
+        approved: '<span class="status-badge approved">Approved</span>',
+        rejected: '<span class="status-badge rejected">Rejected</span>',
+        info_needed: '<span class="status-badge info_needed">Info Needed</span>'
+      };
+      const comment = parsedNew && parsedNew.l2Details ? parsedNew.l2Details.managerRemarks : '';
+      const commentText = comment ? ` &bull; Remarks: "<em>${comment}</em>"` : '';
+      detail = `L2 Manager marked as ${statusLabels[status] || status}${commentText}`;
+    } else if (action.startsWith('L3_')) {
+      const status = action.replace('L3_', '').toLowerCase();
+      const statusLabels = {
+        payment_initiated: '<span class="status-badge payment_initiated">Payment Initiated</span>',
+        payment_confirmed: '<span class="status-badge approved">Payment Confirmed</span>'
+      };
+      let utrText = '';
+      if (parsedNew && parsedNew.l3Details) {
+        const utr = parsedNew.l3Details.utrNumber;
+        if (utr) utrText = ` &bull; UTR: <code>${utr}</code>`;
+      }
+      detail = `L3 Finance marked as ${statusLabels[status] || status}${utrText}`;
+    } else if (action.startsWith('L4_')) {
+      const status = action.replace('L4_', '').toLowerCase();
+      const statusLabels = {
+        picked_up: '<span class="status-badge new">Picked Up</span>',
+        scrapped: '<span class="status-badge scrapped">Scrapped</span>'
+      };
+      detail = `L4 Yard marked as ${statusLabels[status] || status}`;
+    } else {
+      // Fallback
+      const cleanAction = action.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+      detail = `<strong>${cleanAction}</strong>${l.newVal ? ' — ' + l.newVal : ''}`;
+    }
+
     tr.innerHTML = `
       <td style="color:var(--text-secondary); font-size:12px;">${new Date(l.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
       <td style="font-weight:500;">${userName}</td>
-      <td>${l.action}${l.newVal ? " — " + l.newVal : ""}</td>
+      <td>${detail}</td>
       <td style="font-family:monospace; font-size:12px; color:var(--text-secondary);">${l.entityId || "—"}</td>
     `;
     tbody.appendChild(tr);
@@ -1972,20 +2103,18 @@ function mockDownloadFile() {
   closeMediaLightbox();
 }
 
-function copyToClipboard(text, fieldName) {
+async function copyToClipboard(text, fieldName) {
   if (!text || text === "—" || text === "-") {
     Utils.showAlert("No value to copy", "info");
     return;
   }
-  navigator.clipboard
-    .writeText(text)
-    .then(() => {
-      Utils.showAlert(`${fieldName} copied to clipboard!`, "success");
-    })
-    .catch((err) => {
-      console.error("Failed to copy: ", err);
-      Utils.showAlert("Failed to copy text", "error");
-    });
+  try {
+    await navigator.clipboard.writeText(text);
+    Utils.showAlert(`${fieldName} copied to clipboard!`, "success");
+  } catch (err) {
+    console.error("Failed to copy: ", err);
+    Utils.showAlert("Failed to copy text", "error");
+  }
 }
 
 function openEditVahanDialog() {
@@ -2020,7 +2149,7 @@ function closeEditVahanDialog() {
   document.getElementById("edit-vahan-modal").style.display = "none";
 }
 
-function handleSaveVahanDetails() {
+async function handleSaveVahanDetails() {
   if (!selectedL2LeadId) return;
   const fitness = document.getElementById("edit-vahan-fitness").value.trim();
   const hp = document.getElementById("edit-vahan-hp").value.trim();
@@ -2041,11 +2170,11 @@ function handleSaveVahanDetails() {
       blacklistStatus: blacklist,
       checkedAt: new Date().toISOString(),
     };
-    Api.saveLeads(leads);
+    await Api.saveLeads(leads);
 
     // Log audit trail
     const user = Auth.getCurrentUser();
-    Api.logAction(
+    await Api.logAction(
       user.id,
       "VAHAN_DETAILS_UPDATE",
       "leads",
@@ -2162,7 +2291,7 @@ function openEditL2Section(sectionName) {
   document.getElementById("edit-l2-price-recommended").value =
     l1.recommendedPrice || "";
   document.getElementById("edit-l2-price-agreed").value =
-    l1.agreedPrice || l1.offeredPrice || lead.expectedPrice || "";
+    l1.agreedPrice || l1.offeredPrice || l1.recommendedPrice || lead.expectedPrice || "";
 
   // 6. Payment method coordinates
   const payMode = l1.paymentMode || "upi";
@@ -2296,7 +2425,7 @@ function toggleEditL2PaymentFields() {
   }
 }
 
-function handleSaveL2RequestDetails() {
+async function handleSaveL2RequestDetails() {
   if (!selectedL2LeadId) return;
 
   const leads = Api.getLeads();
@@ -2533,12 +2662,12 @@ function handleSaveL2RequestDetails() {
     l1.photos = Object.values(l1.media).filter(Boolean);
   }
 
-  // Save changes to LocalStorage
-  Api.saveLeads(leads);
+  // Save changes to database
+  await Api.saveLeads(leads);
 
   // Log action
   const user = Auth.getCurrentUser();
-  Api.logAction(
+  await Api.logAction(
     user.id,
     "L2_REQUEST_EDITED",
     "leads",
@@ -3153,7 +3282,7 @@ function closeCreateLeadModal() {
   document.getElementById("create-lead-modal").style.display = "none";
 }
 
-function handleCreateLeadSubmit() {
+async function handleCreateLeadSubmit() {
   const ownerName = document.getElementById("create-lead-owner-name").value.trim();
   const phone = document.getElementById("create-lead-phone").value.trim();
   const altPhone = document.getElementById("create-lead-alt-phone").value.trim();
@@ -3185,14 +3314,14 @@ function handleCreateLeadSubmit() {
     kmsDriven: parseInt(kmsDriven) || 0,
     expectedPrice: parseInt(expectedPrice) || 0,
     wantsNewCar,
-    bodyCondition: 5, // Default average condition
-    optionsPresent: ["Battery", "AC", "Music System", "Spare Tyre", "Jack & Tools"] // Default options
   };
 
   try {
-    Api.createSellerLead(leadData);
-    alert("Lead created successfully!");
+    await Api.createSellerLead(leadData);
+    alert("Lead created and saved to database successfully!");
     closeCreateLeadModal();
+    // Refresh data from backend to ensure UI is in sync
+    await Api.syncAll();
     if (typeof loadL1Panel === "function") {
       loadL1Panel();
     }
@@ -3200,7 +3329,8 @@ function handleCreateLeadSubmit() {
       loadOverviewPanel();
     }
   } catch (err) {
-    alert("Error: " + err.message);
+    console.error('Error creating lead:', err);
+    alert("Error creating lead: " + err.message);
   }
 }
 

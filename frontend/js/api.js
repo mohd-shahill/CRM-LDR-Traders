@@ -3,16 +3,37 @@
  */
 const API_BASE = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 
+function getPortalName() {
+  let portal = 'employee';
+  if (window.location.pathname.includes('/admin/')) {
+    portal = 'admin';
+  } else if (window.location.pathname.includes('/onsite/')) {
+    portal = 'onsite';
+  }
+  return portal;
+}
+
 async function apiFetch(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
   options.credentials = 'include';
   options.headers = {
     'Content-Type': 'application/json',
+    'X-Portal': getPortalName(),
     ...options.headers,
   };
 
   const response = await fetch(url, options);
   if (!response.ok) {
+    if (response.status === 401 && !endpoint.includes('/auth/login')) {
+      sessionStorage.removeItem("rvsf_session_user");
+      if (!window.location.pathname.endsWith('login.html')) {
+        if (typeof Auth !== 'undefined' && typeof Auth.redirect === 'function') {
+          Auth.redirect();
+        } else {
+          window.location.href = 'login.html';
+        }
+      }
+    }
     const errData = await response.json().catch(() => ({}));
     throw new Error(errData.error || `HTTP error! status: ${response.status}`);
   }
@@ -21,6 +42,8 @@ async function apiFetch(endpoint, options = {}) {
 
 function mapLeadToCamelCase(lead) {
   if (!lead) return null;
+  const l3Details = lead.l3_details || lead.l3Details || {};
+  const l4Details = lead.l4_details || lead.l4Details || {};
   return {
     id: lead.id,
     ownerName: lead.owner_name !== undefined ? lead.owner_name : lead.ownerName,
@@ -45,8 +68,11 @@ function mapLeadToCamelCase(lead) {
     createdAt: lead.created_at !== undefined ? lead.created_at : lead.createdAt,
     l1Details: lead.l1_details !== undefined ? lead.l1_details : lead.l1Details,
     l2Details: lead.l2_details !== undefined ? lead.l2_details : lead.l2Details,
-    l3Details: lead.l3_details !== undefined ? lead.l3_details : lead.l3Details,
-    l4Details: lead.l4_details !== undefined ? lead.l4_details : lead.l4Details,
+    l3Details: l3Details,
+    l4Details: l4Details,
+    paymentDetails: l3Details.paymentDetails || lead.paymentDetails,
+    pickupDetails: l4Details.pickupDetails || lead.pickupDetails,
+    scrapDetails: l4Details.scrapDetails || lead.scrapDetails,
   };
 }
 
@@ -68,6 +94,7 @@ const Api = {
       const leadsRes = await apiFetch('/leads?limit=1000').catch(() => ({ leads: [] }));
       const rawLeads = leadsRes.leads || leadsRes || [];
       this.leads = rawLeads.map(mapLeadToCamelCase);
+      this.pristineLeads = JSON.parse(JSON.stringify(this.leads));
       this.auditLogs = await apiFetch('/audit').catch(() => []);
 
       const currentUser = Auth.getCurrentUser();
@@ -103,38 +130,27 @@ const Api = {
     return data.user;
   },
 
-  // ------------------ USER API ------------------
   getUsers() {
-    if (!this.users || this.users.length === 0) {
-      return [
-        { id: 'usr-1', name: 'Alok Sharma', email: 'alok@ldr.com', permissions: ['l1'] },
-        { id: 'usr-2', name: 'Rohit Kumar', email: 'rohit@ldr.com', permissions: ['l1', 'l4_picker'] },
-        { id: 'usr-3', name: 'Megha Singh', email: 'megha@ldr.com', permissions: ['l2'] },
-        { id: 'usr-4', name: 'Vikram Gupta', email: 'vikram@ldr.com', permissions: ['l3'] },
-        { id: 'usr-5', name: 'Ravi Yadav', email: 'ravi@ldr.com', permissions: ['l4_picker'] },
-        { id: 'usr-6', name: 'Sanjay Dutt', email: 'sanjay@ldr.com', permissions: ['l4_scrapper'] },
-        { id: 'usr-7', name: 'Inspector Deepak', email: 'deepak@ldr.com', permissions: ['onsite_inspect'] },
-        { id: 'usr-8', name: 'Super Admin', email: 'admin@ldr.com', permissions: ['super_admin'], is_super_admin: true }
-      ];
-    }
-    return this.users;
+    return [...(this.users || [])];
   },
 
-  saveUsers(users) {
+  async saveUsers(users) {
     for (const u of users) {
       const cached = this.users.find(c => c.id === u.id);
-      if (!cached) {
-        // Create user
-        apiFetch('/users', {
-          method: 'POST',
-          body: JSON.stringify(u),
-        }).catch(err => console.error('Error creating user:', err));
-      } else {
-        // Update user
-        apiFetch(`/users/${u.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(u),
-        }).catch(err => console.error('Error updating user:', err));
+      try {
+        if (!cached) {
+          await apiFetch('/users', {
+            method: 'POST',
+            body: JSON.stringify(u),
+          });
+        } else {
+          await apiFetch(`/users/${u.id}`, {
+            method: 'PUT',
+            body: JSON.stringify(u),
+          });
+        }
+      } catch (err) {
+        console.error('Error saving user:', err);
       }
     }
     this.users = [...users];
@@ -145,111 +161,99 @@ const Api = {
     return this.leads;
   },
 
-  saveLeads(leads) {
+  async saveLeads(leads) {
     for (const l of leads) {
-      const cached = this.leads.find(c => c.id === l.id);
-      if (!cached) {
-        // New lead creation
-        apiFetch('/leads', {
-          method: 'POST',
-          body: JSON.stringify(l),
-        }).catch(err => console.error('Error creating lead:', err));
-      } else {
-        // Detect specific stage updates by comparing cached state
-        const statusChanged = cached.status !== l.status;
-        const l1Changed = JSON.stringify(cached.l1Details || {}) !== JSON.stringify(l.l1Details || {});
-        const l2Changed = JSON.stringify(cached.l2Details || {}) !== JSON.stringify(l.l2Details || {});
-        const l3Changed = JSON.stringify(cached.l3Details || {}) !== JSON.stringify(l.l3Details || {});
-        const l4Changed = JSON.stringify(cached.l4Details || {}) !== JSON.stringify(l.l4Details || {});
-        const assignedChanged = cached.assignedTo !== l.assignedTo;
+      // Merge pickupDetails and scrapDetails into l4Details to save in the DB
+      l.l4Details = {
+        ...(l.l4Details || {}),
+        pickupDetails: l.pickupDetails || (l.l4Details && l.l4Details.pickupDetails),
+        scrapDetails: l.scrapDetails || (l.l4Details && l.l4Details.scrapDetails),
+      };
 
-        if (l1Changed) {
-          apiFetch(`/leads/${l.id}/l1`, {
-            method: 'PUT',
-            body: JSON.stringify(l.l1Details),
-          }).catch(err => console.error('Error updating L1:', err));
-        } else if (l2Changed) {
-          apiFetch(`/leads/${l.id}/l2`, {
-            method: 'PUT',
-            body: JSON.stringify({ l2Details: l.l2Details, status: l.status }),
-          }).catch(err => console.error('Error updating L2:', err));
-        } else if (l3Changed) {
-          apiFetch(`/leads/${l.id}/l3`, {
-            method: 'PUT',
-            body: JSON.stringify({ l3Details: l.l3Details, status: l.status }),
-          }).catch(err => console.error('Error updating L3:', err));
-        } else if (l4Changed) {
-          apiFetch(`/leads/${l.id}/l4`, {
-            method: 'PUT',
-            body: JSON.stringify({ l4Details: l.l4Details, status: l.status }),
-          }).catch(err => console.error('Error updating L4:', err));
-        } else if (assignedChanged) {
-          apiFetch(`/leads/${l.id}/assign`, {
-            method: 'PUT',
-            body: JSON.stringify({ assignedTo: l.assignedTo }),
-          }).catch(err => console.error('Error assigning lead:', err));
-        } else if (statusChanged) {
-          // Fallback status update using L4 endpoint as a generic updater
-          apiFetch(`/leads/${l.id}/l4`, {
-            method: 'PUT',
-            body: JSON.stringify({ l4Details: l.l4Details || {}, status: l.status }),
-          }).catch(err => console.error('Error updating status:', err));
+      const cached = (this.pristineLeads || []).find(c => c.id === l.id);
+      try {
+        if (!cached) {
+          // New lead creation
+          await apiFetch('/leads', {
+            method: 'POST',
+            body: JSON.stringify(l),
+          });
+        } else {
+          // Detect specific stage updates by comparing cached state
+          const statusChanged = cached.status !== l.status;
+          const l1Changed = JSON.stringify(cached.l1Details || {}) !== JSON.stringify(l.l1Details || {});
+          const l2Changed = JSON.stringify(cached.l2Details || {}) !== JSON.stringify(l.l2Details || {});
+          const l3Changed = JSON.stringify(cached.l3Details || {}) !== JSON.stringify(l.l3Details || {});
+          const l4Changed = JSON.stringify(cached.l4Details || {}) !== JSON.stringify(l.l4Details || {});
+          const assignedChanged = cached.assignedTo !== l.assignedTo;
+
+          if (l1Changed) {
+            await apiFetch(`/leads/${l.id}/l1`, {
+              method: 'PUT',
+              body: JSON.stringify(l.l1Details),
+            });
+          } else if (l2Changed) {
+            await apiFetch(`/leads/${l.id}/l2`, {
+              method: 'PUT',
+              body: JSON.stringify({ l2Details: l.l2Details, status: l.status }),
+            });
+          } else if (l3Changed) {
+            await apiFetch(`/leads/${l.id}/l3`, {
+              method: 'PUT',
+              body: JSON.stringify({ l3Details: l.l3Details, status: l.status }),
+            });
+          } else if (l4Changed) {
+            await apiFetch(`/leads/${l.id}/l4`, {
+              method: 'PUT',
+              body: JSON.stringify({ l4Details: l.l4Details, status: l.status }),
+            });
+          } else if (assignedChanged) {
+            await apiFetch(`/leads/${l.id}/assign`, {
+              method: 'PUT',
+              body: JSON.stringify({ assignedTo: l.assignedTo }),
+            });
+          } else if (statusChanged) {
+            // Fallback status update using L4 endpoint as a generic updater
+            await apiFetch(`/leads/${l.id}/l4`, {
+              method: 'PUT',
+              body: JSON.stringify({ l4Details: l.l4Details || {}, status: l.status }),
+            });
+          }
         }
+      } catch (err) {
+        console.error('Error saving lead:', err);
       }
     }
     this.leads = [...leads];
+    this.pristineLeads = JSON.parse(JSON.stringify(this.leads));
   },
 
   getLeadById(id) {
     return this.leads.find((l) => l.id === id);
   },
 
-  createSellerLead(leadData) {
-    const tempId = 'lead-' + Math.floor(100000 + Math.random() * 900000);
-    const tempLead = {
-      id: tempId,
-      ownerName: leadData.ownerName,
-      phone: leadData.phone,
-      altPhone: leadData.altPhone || '',
-      vehicleNumber: leadData.vehicleNumber,
-      make: leadData.make || '',
-      model: leadData.model || '',
-      year: parseInt(leadData.year) || null,
-      colour: leadData.colour || '',
-      fuelType: leadData.fuelType || '',
-      kmsDriven: parseInt(leadData.kmsDriven) || null,
-      expectedPrice: parseInt(leadData.expectedPrice) || null,
-      wantsNewCar: leadData.wantsNewCar === true || leadData.wantsNewCar === 'true',
-      status: 'new',
-      assignedTo: null,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Save locally immediately to keep UI responsive
-    this.leads.unshift(tempLead);
-
-    // Save to PostgreSQL in the background
-    apiFetch('/leads', {
+  async createSellerLead(leadData) {
+    // Save to PostgreSQL and wait for confirmation
+    const res = await apiFetch('/leads', {
       method: 'POST',
       body: JSON.stringify(leadData),
-    }).then(res => {
-      // Replace temp lead with actual saved record containing DB constraints and assignments
-      const idx = this.leads.findIndex(l => l.id === tempId);
-      if (idx !== -1 && res.lead) {
-        this.leads[idx] = mapLeadToCamelCase(res.lead);
-      }
-    }).catch(err => {
-      console.error('Error creating seller lead on backend:', err);
     });
 
-    return tempLead;
+    const savedLead = res.lead ? mapLeadToCamelCase(res.lead) : null;
+
+    if (savedLead) {
+      // Add the DB-confirmed lead to local cache
+      this.leads.unshift(savedLead);
+    }
+
+    return savedLead;
   },
 
-  updateLeadStatus(leadId, status, userId, notes = '') {
+  async updateLeadStatus(leadId, status, userId, notes = '') {
     const lead = this.getLeadById(leadId);
     if (lead) {
       lead.status = status;
-      this.saveLeads(this.leads);
+      await this.saveLeads(this.leads);
     }
     return lead;
   },
@@ -302,24 +306,23 @@ const Api = {
     return this.auditLogs || [];
   },
 
-  logAction(userId, action, entityType, entityId, oldVal, newVal) {
-    apiFetch('/audit', {
-      method: 'POST',
-      body: JSON.stringify({
-        userId,
-        action,
-        entityType,
-        entityId,
-        oldVal: typeof oldVal === 'object' ? JSON.stringify(oldVal) : oldVal,
-        newVal: typeof newVal === 'object' ? JSON.stringify(newVal) : newVal,
-      })
-    })
-    .then(() => {
-      apiFetch('/audit')
-        .then(newLogs => { this.auditLogs = newLogs; })
-        .catch(err => console.error('Error syncing audit logs:', err));
-    })
-    .catch(err => console.error('Error logging action to backend:', err));
+  async logAction(userId, action, entityType, entityId, oldVal, newVal) {
+    try {
+      await apiFetch('/audit', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId,
+          action,
+          entityType,
+          entityId,
+          oldVal: typeof oldVal === 'object' ? JSON.stringify(oldVal) : oldVal,
+          newVal: typeof newVal === 'object' ? JSON.stringify(newVal) : newVal,
+        })
+      });
+      this.auditLogs = await apiFetch('/audit');
+    } catch (err) {
+      console.error('Error logging action to backend:', err);
+    }
   },
 
   async uploadFile(file) {
@@ -331,6 +334,9 @@ const Api = {
       method: 'POST',
       body: formData,
       credentials: 'include',
+      headers: {
+        'X-Portal': getPortalName(),
+      }
     });
 
     if (!response.ok) {

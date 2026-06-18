@@ -1257,53 +1257,10 @@
                 </div>
               </div>
 
-              <!-- Seller bank coordinates -->
+              <!-- Seller Payment Coordinates -->
               <div class="vahan-box" style="margin-bottom:24px;">
-                <h4 class="section-box-title">Seller bank coordinates</h4>
-                <div class="vahan-row"><span>Account Holder</span>
-                  <div style="display:flex; align-items:center;"><strong id="payout-acc-holder">—</strong><svg
-                      onclick="copyToClipboard(document.getElementById('payout-acc-holder').innerText, 'Account Holder')"
-                      width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round"
-                      style="cursor:pointer; margin-left:6px; opacity:0.7; transition:opacity 0.2s;"
-                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg></div>
-                </div>
-                <div class="vahan-row"><span>Bank Name</span>
-                  <div style="display:flex; align-items:center;"><strong id="payout-bank-name">—</strong><svg
-                      onclick="copyToClipboard(document.getElementById('payout-bank-name').innerText, 'Bank Name')"
-                      width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round"
-                      style="cursor:pointer; margin-left:6px; opacity:0.7; transition:opacity 0.2s;"
-                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg></div>
-                </div>
-                <div class="vahan-row"><span>Account Number</span>
-                  <div style="display:flex; align-items:center;"><strong id="payout-acc-number">—</strong><svg
-                      onclick="copyToClipboard(document.getElementById('payout-acc-number').innerText, 'Account Number')"
-                      width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round"
-                      style="cursor:pointer; margin-left:6px; opacity:0.7; transition:opacity 0.2s;"
-                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg></div>
-                </div>
-                <div class="vahan-row"><span>IFSC Code</span>
-                  <div style="display:flex; align-items:center;"><strong id="payout-ifsc">—</strong><svg
-                      onclick="copyToClipboard(document.getElementById('payout-ifsc').innerText, 'IFSC Code')"
-                      width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round"
-                      style="cursor:pointer; margin-left:6px; opacity:0.7; transition:opacity 0.2s;"
-                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg></div>
-                </div>
+                <h4 class="section-box-title">Seller Payment Coordinates</h4>
+                <div id="l3-payment-coordinates-box"></div>
               </div>
 
               <!-- Verified Seller KYC Documents -->
@@ -1664,7 +1621,7 @@
   <!-- ============ MODALS ============ -->
 
   <!-- Lead Detail Modal (for New / Assigned leads) -->
-  <div class="modal-overlay" id="lead-detail-modal" onclick="closeLeadDetailModal()">
+  <div class="modal-overlay" id="lead-detail-modal">
     <div class="premium-card modal-card" onclick="event.stopPropagation()"
       style="max-width: 600px; padding: 24px; display: flex; flex-direction: column; max-height: 85vh; overflow-y: auto;">
       <div
@@ -1740,33 +1697,7 @@
           </div>
         </div>
 
-        <!-- Condition & Accessories -->
-        <div>
-          <h4
-            style="margin: 0 0 10px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
-            Seller Reported Condition</h4>
-          <div
-            style="display: grid; grid-template-columns: 1fr; gap: 12px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
-            <div>
-              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Body
-                Condition (Seller Rated)</span>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span id="lead-detail-rating-badge" class="status-badge"
-                  style="background: var(--primary-color); color: #fff;">5/10</span>
-                <span id="lead-detail-rating-text"
-                  style="font-size: 0.85rem; color: var(--text-secondary);">Average</span>
-              </div>
-            </div>
-            <div>
-              <span
-                style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 6px;">Accessories
-                Present</span>
-              <div id="lead-detail-options" style="display: flex; flex-wrap: wrap; gap: 6px;">
-                <!-- badges -->
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         <!-- L1 Valuation Details (conditionally shown) -->
         <div id="lead-detail-valuation-section" style="display: none;">
@@ -1806,7 +1737,7 @@
             <div style="flex-grow: 1;">
               <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Assign
                 L1 Coordinator</span>
-              <select id="lead-detail-agent-select" class="premium-select" style="height: 38px; width: 100%;">
+              <select id="lead-detail-agent-select" class="premium-select" style="height: 38px; width: 100%; padding-top: 0; padding-bottom: 0;">
                 <!-- agents options -->
               </select>
             </div>
@@ -1824,7 +1755,7 @@
   </div>
 
   <!-- Reject Reason Modal (L2) -->
-  <div class="modal-overlay" id="reject-modal" onclick="closeRejectDialog()">
+  <div class="modal-overlay" id="reject-modal">
     <div class="premium-card modal-card" onclick="event.stopPropagation()">
       <h3 style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px;">Specify
         Rejection Grounds</h3>
@@ -1843,7 +1774,7 @@
 
 
   <!-- Create Lead Modal (Admin) -->
-  <div class="modal-overlay" id="create-lead-modal" onclick="closeCreateLeadModal()">
+  <div class="modal-overlay" id="create-lead-modal">
     <div class="premium-card modal-card" onclick="event.stopPropagation()" style="max-width:600px; max-height: 90vh; overflow-y: auto;">
       <h3 style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px;">Create New Lead</h3>
       
@@ -1929,7 +1860,7 @@
 
 
   <!-- Add New Employee Modal -->
-  <div class="modal-overlay" id="user-modal" onclick="closeNewUserModal()">
+  <div class="modal-overlay" id="user-modal">
     <div class="premium-card modal-card" onclick="event.stopPropagation()" style="max-width:480px;">
       <h3 style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px;">Enroll Staff
         Member</h3>
@@ -1978,7 +1909,7 @@
   </div>
 
   <!-- Edit Staff Member Modal -->
-  <div class="modal-overlay" id="edit-user-modal" onclick="closeEditUserModal()">
+  <div class="modal-overlay" id="edit-user-modal">
     <div class="premium-card modal-card" onclick="event.stopPropagation()" style="max-width:480px; padding: 24px;">
       <h3 id="edit-user-modal-title"
         style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px; color:var(--text-main);">
@@ -2041,7 +1972,7 @@
   </div>
 
   <!-- Edit Vahan Details Modal -->
-  <div class="modal-overlay" id="edit-vahan-modal" onclick="closeEditVahanDialog()">
+  <div class="modal-overlay" id="edit-vahan-modal">
     <div class="premium-card modal-card" onclick="event.stopPropagation()" style="max-width:440px;">
       <h3 style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px;">Edit Vahan
         Details</h3>
@@ -2073,7 +2004,7 @@
   </div>
 
   <!-- Edit L2 Request Modal -->
-  <div class="modal-overlay" id="edit-l2-request-modal" onclick="closeEditL2RequestDialog()">
+  <div class="modal-overlay" id="edit-l2-request-modal">
     <div class="premium-card modal-card" onclick="event.stopPropagation()"
       style="max-width:640px; width:90%; display:flex; flex-direction:column; max-height:85vh;">
       <h3 id="edit-l2-modal-title"
@@ -2716,7 +2647,7 @@
   </div>
 
   <!-- Media Lightbox Modal -->
-  <div class="modal-overlay" id="lightbox-modal" onclick="closeMediaLightbox()">
+  <div class="modal-overlay" id="lightbox-modal">
     <div class="premium-card modal-card" onclick="event.stopPropagation()"
       style="max-width:540px; text-align:center; padding:24px;">
       <h3 id="lightbox-title"
@@ -2757,10 +2688,10 @@
   </div>
 
   <!-- Scripts -->
-  <script src="../js/api.js"></script>
-  <script src="../js/auth.js"></script>
-  <script src="../js/utils.js"></script>
-  <script src="admin.js"></script>
+  <script src="../js/api.js?v=4"></script>
+  <script src="../js/auth.js?v=2"></script>
+  <script src="../js/utils.js?v=2"></script>
+  <script src="admin.js?v=3"></script>
 </body>
 
 </html>

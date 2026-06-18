@@ -68,6 +68,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   Utils.initTheme();
   renderHomeScreen(user);
+  loadNotificationsCount();
 
   window.addEventListener('hashchange', () => {
     const screen = window.location.hash.substring(1) || 'home';
@@ -89,6 +90,46 @@ document.addEventListener("DOMContentLoaded", async () => {
   } else {
     navigateTo(initialScreen, false);
   }
+
+  // Poll for database / local storage changes every 5 seconds
+  setInterval(async () => {
+    await Api.syncAll();
+    loadNotificationsCount();
+    
+    // If the active screen is L1-Leads, Picker, or Scrapper, refresh the lists
+    if (activeScreen === "l1-leads") {
+      const queue = document.getElementById("l1-queue");
+      if (queue) {
+        const currentUser = Auth.getCurrentUser();
+        const leads = Api.getLeads().filter(
+          (l) => l.status === "assigned" && l.assignedTo === currentUser.id
+        );
+        queue.innerHTML = "";
+        if (leads.length === 0) {
+          queue.innerHTML = '<div style="text-align:center; padding:16px; color:var(--text-secondary); font-size:0.85rem; border: 1px dashed var(--border-color); border-radius: 8px;">No assigned leads pending valuation.</div>';
+        } else {
+          leads.forEach((l) => {
+            const card = document.createElement("div");
+            card.className = `queue-card ${selectedL1LeadId === l.id ? "selected" : ""}`;
+            card.setAttribute("data-id", l.id);
+            card.onclick = () => selectL1Lead(l.id);
+            card.innerHTML = `
+              <div>
+                <strong style="display:block;">${l.make || "Unknown"} ${l.model || ""}</strong>
+                <span style="font-size:0.75rem; font-family:monospace; color:var(--text-secondary);">${l.vehicleNumber}</span>
+              </div>
+              <span class="premium-badge md-badge-pending">Assigned</span>
+            `;
+            queue.appendChild(card);
+          });
+        }
+      }
+    } else if (activeScreen === "picker") {
+      initPickerQueue();
+    } else if (activeScreen === "scrapper") {
+      initScrapQueue();
+    }
+  }, 5000);
 });
 
 function getStaffDescription(user) {
@@ -135,16 +176,40 @@ function renderHomeScreen(user) {
   const hasL1 = user.permissions.includes("l1");
   const hasPicker = user.permissions.includes("l4_picker");
 
+  // Leads card (L1)
+  const leadsCard = buildActionCard({
+    id: "card-leads",
+    style: hasL1 ? "primary" : "locked",
+    label: "Leads",
+    sub: hasL1 ? "Assigned valuation jobs" : "No L1 permission",
+    icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
+    onclick: hasL1 ? () => navigateTo("l1-leads") : null,
+    locked: !hasL1,
+  });
+  if (!hasL1) {
+    const badge = document.createElement("span");
+    badge.className = "card-lock-badge";
+    badge.textContent = "Locked";
+    leadsCard.appendChild(badge);
+  }
+  grid.appendChild(leadsCard);
+
   // Add Vehicle card (L1)
   const addCard = buildActionCard({
     id: "card-add-vehicle",
     style: hasL1 ? "primary" : "locked",
     label: "Add Vehicle",
-    sub: hasL1 ? "Fill valuation form" : "No L1 permission",
-    icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`,
-    onclick: hasL1 ? () => navigateTo("l1") : null,
+    sub: hasL1 ? "Valuation from scratch" : "No L1 permission",
+    icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>`,
+    onclick: hasL1 ? () => navigateTo("l1-add") : null,
     locked: !hasL1,
   });
+  if (!hasL1) {
+    const badge = document.createElement("span");
+    badge.className = "card-lock-badge";
+    badge.textContent = "Locked";
+    addCard.appendChild(badge);
+  }
   grid.appendChild(addCard);
 
   // Pickup card (Picker)
@@ -252,7 +317,8 @@ function navigateTo(screen, updateHash = true) {
   const topTitle = document.getElementById("topbar-section-title");
 
   const titles = {
-    l1: "Vehicle Valuation",
+    "l1-leads": "Valuation Leads",
+    "l1-add": "Add New Vehicle",
     picker: "Pickup Collections",
     scrapper: "Scrap Yard Operations",
     history: "Purchase History",
@@ -264,8 +330,13 @@ function navigateTo(screen, updateHash = true) {
     topTitle.textContent = titles[screen] || "Employee Portal";
   }
 
-  // Show correct screen
-  const targetScreen = document.getElementById(`screen-${screen}`);
+  // Show correct screen (both l1-leads and l1-add render in screen-l1 container)
+  let targetScreenId = `screen-${screen}`;
+  if (screen === "l1-leads" || screen === "l1-add") {
+    targetScreenId = "screen-l1";
+  }
+
+  const targetScreen = document.getElementById(targetScreenId);
   if (targetScreen) {
     targetScreen.style.display = "block";
     loadScreenData(screen);
@@ -298,7 +369,7 @@ function navigateHome(updateHash = true) {
 }
 
 function loadScreenData(screen) {
-  if (screen === "l1") initL1Queue();
+  if (screen === "l1-leads" || screen === "l1-add") initL1Screen(screen);
   else if (screen === "picker") initPickerQueue();
   else if (screen === "scrapper") initScrapQueue();
   else if (screen === "history") initHistoryScreen();
@@ -355,34 +426,108 @@ function initHistoryScreen() {
 // ====================================================
 // SECTION 1: L1 EVALUATION WORKFLOW
 // ====================================================
+function initL1Screen(screenMode) {
+  const queueContainer = document.getElementById("l1-queue-container");
+  
+  if (screenMode === "l1-add") {
+    // Hide queue, show blank form directly
+    if (queueContainer) queueContainer.style.display = "none";
+    startNewL1Valuation();
+  } else {
+    // Show queue
+    if (queueContainer) queueContainer.style.display = "block";
+    
+    // Hide form, show empty state
+    document.getElementById("l1-valuation-form").style.display = "none";
+    document.getElementById("l1-form-empty").style.display = "block";
+    
+    // Reset selected lead
+    selectedL1LeadId = null;
+    
+    // Render the queue
+    const queue = document.getElementById("l1-queue");
+    if (queue) {
+      queue.innerHTML = "";
+      const user = Auth.getCurrentUser();
+      const allLeads = Api.getLeads();
+      console.log("DEBUG: allLeads in employee portal:", allLeads);
+      console.log("DEBUG: logged-in user:", user);
+      const leads = allLeads.filter((l) => {
+        console.log("DEBUG: filtering lead id:", l.id, "status:", l.status, "assignedTo:", l.assignedTo, "user.id:", user ? user.id : null);
+        return l.status === "assigned" && l.assignedTo === (user ? user.id : null);
+      });
+
+      if (leads.length === 0) {
+        queue.innerHTML = '<div style="text-align:center; padding:16px; color:var(--text-secondary); font-size:0.85rem; border: 1px dashed var(--border-color); border-radius: 8px;">No assigned leads pending valuation.</div>';
+      } else {
+        leads.forEach((l) => {
+          const card = document.createElement("div");
+          card.className = `queue-card ${selectedL1LeadId === l.id ? "selected" : ""}`;
+          card.setAttribute("data-id", l.id);
+          card.onclick = () => selectL1Lead(l.id);
+          card.innerHTML = `
+            <div>
+              <strong style="display:block;">${l.make || "Unknown"} ${l.model || ""}</strong>
+              <span style="font-size:0.75rem; font-family:monospace; color:var(--text-secondary);">${l.vehicleNumber}</span>
+            </div>
+            <span class="premium-badge md-badge-pending">Assigned</span>
+          `;
+          queue.appendChild(card);
+        });
+      }
+    }
+  }
+}
+
 function initL1Queue() {
-  // Form is always visible — just initialise interactive widgets
+  initL1Screen("l1-leads");
+}
+
+function selectL1Lead(leadId) {
+  selectedL1LeadId = leadId;
+
+  // Toggle selection classes in L1 queue
+  document.querySelectorAll("#l1-queue .queue-card").forEach((c) => {
+    if (c.getAttribute("data-id") === leadId) {
+      c.classList.add("selected");
+    } else {
+      c.classList.remove("selected");
+    }
+  });
+
+  loadL1LeadForm(leadId);
+}
+
+function startNewL1Valuation() {
   selectedL1LeadId = null;
+
+  // De-select cards
+  document.querySelectorAll("#l1-queue .queue-card").forEach((c) => {
+    c.classList.remove("selected");
+  });
+
+  document.getElementById("l1-form-empty").style.display = "none";
+  document.getElementById("l1-valuation-form").style.display = "block";
+
+  // Reset all form fields
+  document.getElementById("l1-valuation-form").reset();
+
   currentL1BodyCondition = 5;
   currentL1EngineCondition = 5;
   currentL1TyreCondition = 5;
   currentL1Options = [];
 
-  // Reset all form fields
-  document.getElementById("l1-valuation-form").reset();
-
-  // Render condition rating grids
   renderL1ConditionGrids();
   updateL1RatingLabel("body", currentL1BodyCondition);
   updateL1RatingLabel("engine", currentL1EngineCondition);
   updateL1RatingLabel("tyre", currentL1TyreCondition);
-
-  // Render accessories checklist (blank slate)
-  currentL1Options = [];
   renderL1OptionsChecklist(null);
 
-  // Reset upload cards
+  // Reset uploads
   Object.keys(l1UploadedDocs).forEach((k) => (l1UploadedDocs[k] = null));
   Object.keys(l1UploadedMedia).forEach((k) => (l1UploadedMedia[k] = null));
   updateAllDocCards();
   updateAllMediaCards();
-
-  // Reset payment mode
   resetPayMode();
 }
 
@@ -410,6 +555,20 @@ function loadL1LeadForm(leadId) {
     lead.l1Details && lead.l1Details.ownerPhone
       ? lead.l1Details.ownerPhone
       : lead.phone || "";
+  
+  const emailInput = document.getElementById("l1-owner-email");
+  if (emailInput) {
+    emailInput.value = lead.l1Details && lead.l1Details.ownerEmail
+      ? lead.l1Details.ownerEmail
+      : lead.email || "";
+  }
+  const addrInput = document.getElementById("l1-owner-address");
+  if (addrInput) {
+    addrInput.value = lead.l1Details && lead.l1Details.ownerAddress
+      ? lead.l1Details.ownerAddress
+      : lead.address || "";
+  }
+
   document.getElementById("l1-expected-price").value =
     lead.l1Details && lead.l1Details.expectedPrice
       ? lead.l1Details.expectedPrice
@@ -444,6 +603,7 @@ function loadL1LeadForm(leadId) {
     lead.l1Details && lead.l1Details.kmsDriven
       ? lead.l1Details.kmsDriven
       : lead.kmsDriven || "";
+  
   const elEngineNo = document.getElementById("l1-engine-no");
   if (elEngineNo) {
     elEngineNo.value =
@@ -489,7 +649,7 @@ function loadL1LeadForm(leadId) {
   currentL1Options =
     lead.l1Details && lead.l1Details.missingParts
       ? accessoriesList.filter((x) => !lead.l1Details.missingParts.includes(x))
-      : [...lead.optionsPresent];
+      : [...(lead.optionsPresent || [])];
   renderL1OptionsChecklist(lead);
 
   // Load accident remarks
@@ -529,6 +689,31 @@ function loadL1LeadForm(leadId) {
 
   updateL1DocVisualCards();
   updateL1MediaVisualCards();
+
+  // Load recommended price if available
+  const recPriceInput = document.getElementById("l1-recommended-price");
+  if (recPriceInput) {
+    recPriceInput.value = lead.l1Details && lead.l1Details.recommendedPrice
+      ? lead.l1Details.recommendedPrice
+      : "";
+  }
+
+  // Load payment mode if available
+  if (lead.l1Details && lead.l1Details.paymentMode) {
+    selectPayMode(lead.l1Details.paymentMode);
+    if (lead.l1Details.paymentMode === "upi" && lead.l1Details.paymentDetails) {
+      document.getElementById("l1-upi-id").value = lead.l1Details.paymentDetails.upiId || "";
+    } else if (lead.l1Details.paymentMode === "cash" && lead.l1Details.paymentDetails) {
+      document.getElementById("l1-cash-confirm").checked = lead.l1Details.paymentDetails.cashConfirmed || false;
+    } else if (lead.l1Details.paymentMode === "bank" && lead.l1Details.paymentDetails) {
+      document.getElementById("l1-bank-holder").value = lead.l1Details.paymentDetails.accountHolder || "";
+      document.getElementById("l1-bank-name").value = lead.l1Details.paymentDetails.bankName || "";
+      document.getElementById("l1-bank-account").value = lead.l1Details.paymentDetails.accountNumber || "";
+      document.getElementById("l1-bank-ifsc").value = lead.l1Details.paymentDetails.ifscCode || "";
+    }
+  } else {
+    resetPayMode();
+  }
 }
 
 function renderL1OptionsChecklist(lead) {
@@ -920,7 +1105,7 @@ function getL1FormInputValues() {
   };
 }
 
-function handleL1Submit(event) {
+async function handleL1Submit(event) {
   event.preventDefault();
 
   const valuation = getL1FormInputValues();
@@ -951,35 +1136,68 @@ function handleL1Submit(event) {
   }
 
   const user = Auth.getCurrentUser();
-  const newLeadId = `lead-${Date.now()}`;
-
-  // Create new lead entry
-  const newLead = {
-    id: newLeadId,
-    vehicleNumber: valuation.vehicleRegNumber,
-    ownerName: valuation.ownerName,
-    phone: valuation.ownerPhone,
-    email: valuation.ownerEmail,
-    address: valuation.ownerAddress,
-    expectedPrice: valuation.expectedPrice,
-    make: valuation.make,
-    model: valuation.model,
-    year: valuation.year,
-    colour: valuation.colour,
-    fuelType: valuation.fuelType,
-    kmsDriven: valuation.kmsDriven,
-    bodyCondition: valuation.bodyCondition,
-    optionsPresent: currentL1Options,
-    status: "pending_approval",
-    submittedBy: user.id,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    l1Details: valuation,
-  };
-
   const leads = Api.getLeads();
-  leads.push(newLead);
-  Api.saveLeads(leads);
+  
+  let leadId = selectedL1LeadId;
+  let lead;
+
+  if (leadId) {
+    // Update existing lead
+    const existingLead = Api.getLeadById(leadId);
+    lead = {
+      ...existingLead,
+      vehicleNumber: valuation.vehicleRegNumber,
+      ownerName: valuation.ownerName,
+      phone: valuation.ownerPhone,
+      email: valuation.ownerEmail,
+      address: valuation.ownerAddress,
+      expectedPrice: valuation.expectedPrice,
+      make: valuation.make,
+      model: valuation.model,
+      year: valuation.year,
+      colour: valuation.colour,
+      fuelType: valuation.fuelType,
+      kmsDriven: valuation.kmsDriven,
+      bodyCondition: valuation.bodyCondition,
+      optionsPresent: currentL1Options,
+      status: "pending_approval",
+      submittedBy: user.id,
+      updatedAt: new Date().toISOString(),
+      l1Details: valuation,
+    };
+    const idx = leads.findIndex((l) => l.id === leadId);
+    if (idx !== -1) {
+      leads[idx] = lead;
+    }
+  } else {
+    // Create new lead from scratch
+    leadId = `lead-${Date.now()}`;
+    lead = {
+      id: leadId,
+      vehicleNumber: valuation.vehicleRegNumber,
+      ownerName: valuation.ownerName,
+      phone: valuation.ownerPhone,
+      email: valuation.ownerEmail,
+      address: valuation.ownerAddress,
+      expectedPrice: valuation.expectedPrice,
+      make: valuation.make,
+      model: valuation.model,
+      year: valuation.year,
+      colour: valuation.colour,
+      fuelType: valuation.fuelType,
+      kmsDriven: valuation.kmsDriven,
+      bodyCondition: valuation.bodyCondition,
+      optionsPresent: currentL1Options,
+      status: "pending_approval",
+      submittedBy: user.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      l1Details: valuation,
+    };
+    leads.push(lead);
+  }
+
+  await Api.saveLeads(leads);
 
   // Remove any saved draft for this vehicle number
   const drafts = JSON.parse(localStorage.getItem("ldr_l1_drafts") || "{}");
@@ -987,19 +1205,20 @@ function handleL1Submit(event) {
   localStorage.setItem("ldr_l1_drafts", JSON.stringify(drafts));
 
   // Notify L2 purchase managers
-  Api.logAction(
+  await Api.logAction(
     user.id,
     "VALUATION_SUBMITTED",
     "leads",
-    newLeadId,
-    "new",
-    "New vehicle valuation created by L1 agent",
+    leadId,
+    "assigned",
+    "Vehicle valuation completed by L1 agent",
   );
+  
   const managers = Api.getUsers().filter((u) => u.permissions.includes("l2"));
   managers.forEach((m) => {
     Api.addNotification(
       m.id,
-      newLeadId,
+      leadId,
       `New valuation submitted for ${valuation.vehicleRegNumber} — ${valuation.make} ${valuation.model}. Awaiting L2 review.`,
     );
   });
@@ -1009,7 +1228,8 @@ function handleL1Submit(event) {
     "success",
   );
 
-  // Reset form for next entry
+  selectedL1LeadId = null;
+  // Reset form and refresh list
   initL1Queue();
 }
 
@@ -1193,7 +1413,7 @@ function clearSigCanvas() {
   hasSigned = false;
 }
 
-function handleConfirmCollection() {
+async function handleConfirmCollection() {
   if (!selectedPickerLeadId) return;
 
   if (!isProofSnapped) {
@@ -1221,10 +1441,10 @@ function handleConfirmCollection() {
       pickedBy: user.id,
       proofPhoto: "pickup_proof.jpg",
     };
-    Api.saveLeads(leads);
+    await Api.saveLeads(leads);
   }
 
-  Api.logAction(
+  await Api.logAction(
     user.id,
     "VEHICLE_PICKED_UP",
     "leads",
@@ -1388,7 +1608,7 @@ function renderScrapperAccessoriesPills(intactParts) {
   });
 }
 
-function handleCompleteScrapping() {
+async function handleCompleteScrapping() {
   if (!selectedScrapLeadId) return;
 
   const weight = parseFloat(
@@ -1420,10 +1640,10 @@ function handleCompleteScrapping() {
       scrapValue: realizedVal,
       recoveredSalvage: [...selectedScrapParts],
     };
-    Api.saveLeads(leads);
+    await Api.saveLeads(leads);
   }
 
-  Api.logAction(
+  await Api.logAction(
     user.id,
     "VEHICLE_SCRAPPED",
     "leads",
@@ -1439,4 +1659,85 @@ function handleCompleteScrapping() {
   );
   selectedScrapLeadId = null;
   initScrapQueue();
+}
+
+// ==============================================
+// NOTIFICATIONS
+// ==============================================
+function loadNotificationsCount() {
+  const user = Auth.getCurrentUser();
+  if (!user) return;
+  const list = Api.getNotifications(user.id);
+  const unread = list.filter((n) => !n.isRead);
+  const dot = document.getElementById("notification-dot");
+  if (dot) dot.style.display = unread.length > 0 ? "block" : "none";
+
+  const box = document.getElementById("notification-list-box");
+  if (!box) return;
+  box.innerHTML = "";
+  if (list.length === 0) {
+    box.innerHTML =
+      '<div style="text-align:center; padding:16px; color:var(--text-secondary); font-size:0.8rem;">No notifications.</div>';
+    return;
+  }
+  list.slice(0, 5).forEach((n) => {
+    const item = document.createElement("div");
+    item.className = "ntf-item";
+    item.style.backgroundColor = n.isRead
+      ? "transparent"
+      : "var(--primary-container)";
+    item.style.cursor = "pointer";
+    item.style.padding = "12px 16px";
+    item.style.borderBottom = "1px solid var(--border-color)";
+    item.style.fontSize = "0.82rem";
+    item.style.color = "var(--text-primary)";
+    item.innerText = n.message;
+    item.onclick = () => {
+      n.isRead = true;
+      const allNtfs =
+        JSON.parse(localStorage.getItem("rvsf_notifications")) || [];
+      const idx = allNtfs.findIndex((x) => x.id === n.id);
+      if (idx !== -1) {
+        allNtfs[idx].isRead = true;
+        localStorage.setItem("rvsf_notifications", JSON.stringify(allNtfs));
+      }
+      loadNotificationsCount();
+
+      const dd = document.getElementById("notification-dropdown");
+      if (dd) dd.style.display = "none";
+
+      if (n.leadId) {
+        const lead = Api.getLeadById(n.leadId);
+        if (lead) {
+          if (lead.status === "assigned" && user.permissions.includes("l1")) {
+            navigateTo("l1-leads");
+            selectL1Lead(n.leadId);
+          } else if (lead.status === "payment_confirmed" && user.permissions.includes("l4_picker")) {
+            navigateTo("picker");
+            selectPickerLead(n.leadId);
+          } else if (lead.status === "picked_up" && user.permissions.includes("l4_scrapper")) {
+            navigateTo("scrapper");
+            selectScrapLead(n.leadId);
+          }
+        }
+      }
+    };
+    box.appendChild(item);
+  });
+}
+
+function toggleNtfDropdown(event) {
+  event.stopPropagation();
+  const dd = document.getElementById("notification-dropdown");
+  if (!dd) return;
+  const isVisible = dd.style.display === "block";
+  dd.style.display = "none";
+  if (!isVisible) {
+    dd.style.display = "block";
+    const closeListener = () => {
+      dd.style.display = "none";
+      document.removeEventListener("click", closeListener);
+    };
+    document.addEventListener("click", closeListener);
+  }
 }
