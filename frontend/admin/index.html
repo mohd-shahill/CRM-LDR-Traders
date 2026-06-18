@@ -1,0 +1,2766 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    (function () {
+      try {
+        var session = sessionStorage.getItem('rvsf_session_user');
+        if (!session) { window.location.replace('login.html'); }
+      } catch (e) { window.location.replace('login.html'); }
+    })();
+  </script>
+  <title>Admin Dashboard — RVSF - LDR TRADERS</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <style>
+    /* ===== Shell Reset ===== */
+    body {
+      display: block;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .shell {
+      display: flex;
+      height: 100vh;
+      background: var(--bg-color);
+      overflow: hidden;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      width: 220px;
+      background: var(--surface-color);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .brand-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: var(--font-title);
+      cursor: pointer;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .nav {
+      padding: 8px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      color: var(--primary-color);
+      padding: 12px 8px 4px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+      transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+      border: 1.5px solid transparent;
+      position: relative;
+      padding-left: 28px;
+    }
+
+    .nav-item::before {
+      content: '';
+      position: absolute;
+      left: 10px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-disabled);
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .nav-item svg {
+      display: none;
+    }
+
+    .nav-item:hover {
+      background: var(--surface-variant);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--surface-variant);
+      color: var(--text-primary);
+      font-weight: 500;
+      border-color: var(--border-hover);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    .nav-item.active::before {
+      background: var(--primary-color);
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      background: #E24B4A;
+      color: #fff;
+      font-size: 10px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    .nav-badge.amber {
+      background: #EF9F27;
+    }
+
+    .nav-badge.blue {
+      background: #378ADD;
+    }
+
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar-sm {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-color), #0369a1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-name-sm {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .user-role-sm {
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    /* ===== Main Area ===== */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .topbar {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--surface-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .page-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--primary-color);
+      font-family: var(--font-title);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--border-radius-md);
+      border: 1px solid var(--border-color);
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-secondary);
+      position: relative;
+      transition: all 0.15s;
+    }
+
+    .icon-btn:hover {
+      background: var(--surface-variant);
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+
+    .icon-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .notif-dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #E24B4A;
+      border: 1.5px solid var(--surface-color);
+    }
+
+    .ntf-dropdown {
+      position: absolute;
+      top: 44px;
+      right: 0;
+      width: 320px;
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-lg);
+      box-shadow: var(--shadow-elevation-2);
+      display: none;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .ntf-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .ntf-item:hover {
+      background: var(--surface-variant);
+    }
+
+    /* ===== Content ===== */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+    }
+
+    .panel {
+      display: none;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    /* ===== Metrics Grid ===== */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .metric {
+      background: var(--surface-variant);
+      border-radius: var(--border-radius-md);
+      padding: 14px 16px;
+      border: 1px solid var(--border-color);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .metric-val {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: var(--font-title);
+      letter-spacing: -0.5px;
+    }
+
+    .metric-sub {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .metric-sub.up {
+      color: var(--success-color);
+    }
+
+    .metric-sub.warn {
+      color: var(--warning-color);
+    }
+
+    /* ===== Section Head ===== */
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .section-title-sm {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--primary-color);
+      font-family: var(--font-title);
+    }
+
+    /* ===== Filter Chips ===== */
+    .filter-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .chip {
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background: transparent;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+      font-family: var(--font-sans);
+    }
+
+    .chip:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+
+    .chip.active {
+      background: var(--surface-variant);
+      color: var(--text-primary);
+      border-color: var(--border-hover);
+    }
+
+    /* ===== Tables ===== */
+    .table-wrap {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-lg);
+      overflow: hidden;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .admin-table th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+      background: var(--surface-variant);
+    }
+
+    .admin-table th:last-child {
+      padding-left: 27px;
+    }
+
+    .admin-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+
+    .admin-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .admin-table tbody tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    @keyframes rowHighlightGlow {
+      0% {
+        background-color: rgba(14, 165, 233, 0.35);
+      }
+
+      100% {
+        background-color: transparent;
+      }
+    }
+
+    .highlighted-row td {
+      animation: rowHighlightGlow 3.5s ease-out forwards !important;
+    }
+
+    /* ===== Status Badges ===== */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+      line-height: 1.6;
+      white-space: nowrap;
+    }
+
+    .status-badge.new {
+      background: rgba(14, 165, 233, 0.15);
+      color: #38bdf8;
+    }
+
+    .status-badge.assigned {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+    }
+
+    .status-badge.pending_approval {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+    }
+
+    .status-badge.approved {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+
+    .status-badge.paid,
+    .status-badge.payment_confirmed {
+      background: rgba(6, 182, 212, 0.15);
+      color: #22d3ee;
+    }
+
+    .status-badge.payment_initiated {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+    }
+
+    .status-badge.rejected {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+    }
+
+    .status-badge.info_needed {
+      background: rgba(14, 165, 233, 0.15);
+      color: #38bdf8;
+    }
+
+    .status-badge.scrapped {
+      background: rgba(107, 114, 128, 0.15);
+      color: #9ca3af;
+    }
+
+    .status-badge.active-st {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+
+    .status-badge.inactive-st {
+      background: rgba(107, 114, 128, 0.15);
+      color: #9ca3af;
+    }
+
+    /* ===== Action Buttons ===== */
+    .action-btn {
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: var(--border-radius-md);
+      border: 1px solid var(--border-color);
+      background: transparent;
+      cursor: pointer;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      transition: all 0.15s;
+    }
+
+    .action-btn:hover {
+      background: var(--surface-variant);
+      border-color: var(--border-hover);
+    }
+
+    .assign-dropdown {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: var(--border-radius-md);
+      border: 1px solid var(--border-color);
+      background: var(--surface-color);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-family: var(--font-sans);
+    }
+
+    /* ===== Detail View (L2/L3 drill-in) ===== */
+    .detail-back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      margin-bottom: 16px;
+      padding: 6px 14px;
+      border-radius: var(--border-radius-md);
+      border: 1px solid var(--border-color);
+      background: transparent;
+      font-family: var(--font-sans);
+      transition: all 0.15s;
+    }
+
+    .detail-back-btn:hover {
+      background: var(--surface-variant);
+      color: var(--text-primary);
+    }
+
+    .detail-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-lg);
+      padding: 24px;
+    }
+
+    /* ===== Vahan / Detail Boxes ===== */
+    .vahan-box {
+      background: var(--surface-color);
+      border-radius: var(--border-radius-md);
+      border: 1px solid var(--border-color);
+      margin-bottom: 20px;
+      padding: 0;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .section-box-title {
+      background: var(--surface-variant);
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border-color);
+      margin: 0;
+    }
+
+    .vahan-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      background: var(--surface-color);
+    }
+
+    .vahan-row:last-child {
+      border-bottom: none;
+    }
+
+    .vahan-row span {
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .vahan-row strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .reg-plate-badge {
+      display: inline-flex;
+      align-items: center;
+      font-family: monospace;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--surface-variant);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 4px 10px;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+      text-transform: uppercase;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    /* ===== Modals ===== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 500px;
+      animation: modalSlideUp 0.3s var(--transition-curve) forwards;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 900px) {
+      .shell {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 8px;
+      }
+
+      .nav-label {
+        display: none;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .topbar {
+        padding: 12px 16px;
+      }
+
+      .content {
+        padding: 16px;
+      }
+    }
+
+    /* ===== Empty State ===== */
+    .empty-state {
+      padding: 40px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    /* Sign-out link */
+    .signout-link {
+      display: block;
+      margin-top: 10px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 6px 0;
+      border-radius: var(--border-radius-md);
+      border: 1px solid var(--border-color);
+      background: transparent;
+      width: 100%;
+      font-family: var(--font-sans);
+      transition: all 0.15s;
+    }
+
+    .signout-link:hover {
+      background: var(--surface-variant);
+      color: var(--text-primary);
+    }
+
+    /* ===== Pagination ===== */
+    .pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border-color);
+      background: var(--surface-color);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .pagination-btns {
+      display: flex;
+      gap: 6px;
+    }
+
+    .pagination-btn {
+      padding: 5px 10px;
+      min-width: 32px;
+      height: 30px;
+      border-radius: var(--border-radius-sm);
+      border: 1px solid var(--border-color);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      font-weight: 500;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      background: var(--surface-variant);
+    }
+
+    .pagination-btn.active {
+      background: var(--primary-color);
+      color: #fff;
+      border-color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    .pagination-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Section Headers & Fields Text Highlight */
+    [data-theme="light"] .vahan-row span,
+    [data-theme="light"] .vahan-row strong:not(.keep-color),
+    [data-theme="light"] .vahan-box span:not(.status-badge):not(.option-tile *):not(.section-box-title *),
+    [data-theme="light"] .vahan-box #l2-accident-records {
+      color: #000000 !important;
+    }
+
+    [data-theme="dark"] .vahan-row span,
+    [data-theme="dark"] .vahan-row strong:not(.keep-color),
+    [data-theme="dark"] .vahan-box span:not(.status-badge):not(.option-tile *):not(.section-box-title *),
+    [data-theme="dark"] .vahan-box #l2-accident-records {
+      color: #ffffff !important;
+    }
+
+    .section-box-title,
+    .section-box-title span {
+      color: var(--primary-color) !important;
+    }
+
+    .section-box-title .action-btn {
+      color: var(--primary-color) !important;
+      border-color: var(--primary-color) !important;
+    }
+
+    .section-box-title .action-btn:hover {
+      background: var(--primary-container) !important;
+      color: var(--primary-hover) !important;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="shell">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-name" onclick="window.location.href='../index.html'">RVSF - LDR TRADERS</div>
+        <div class="brand-sub">Admin Portal</div>
+      </div>
+      <div class="nav" id="nav-list-menu">
+        <!-- Populated by JS -->
+      </div>
+      <div class="sidebar-footer">
+        <div class="user-pill">
+          <div class="avatar-sm" id="sidebar-avatar-initials">SA</div>
+          <div>
+            <div class="user-name-sm" id="user-display-name">Loading...</div>
+            <div class="user-role-sm" id="user-display-role">Admin</div>
+          </div>
+        </div>
+        <button class="signout-link" onclick="Auth.logout()">Sign Out</button>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <div class="main">
+
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="page-title" id="page-title">Overview</div>
+        <div class="topbar-right">
+          <button class="theme-toggle-btn" aria-label="Toggle Theme"
+            style="width:34px; height:34px; font-size:0;"></button>
+          <div style="position:relative;">
+            <button class="icon-btn" aria-label="Notifications" onclick="toggleNtfDropdown(event)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span class="notif-dot" id="notification-dot" style="display:none;"></span>
+            </button>
+            <div class="ntf-dropdown" id="notification-dropdown" onclick="event.stopPropagation()">
+              <div
+                style="padding:12px 16px; font-weight:500; font-size:0.85rem; border-bottom:1px solid var(--border-color);">
+                <span>Notifications</span>
+              </div>
+              <div id="notification-list-box" style="max-height:280px; overflow-y:auto;"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============ CONTENT PANELS ============ -->
+      <div class="content" id="main-tab-panel">
+
+        <!-- ========== OVERVIEW PANEL ========== -->
+        <div id="panel-overview" class="panel">
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">Total leads</div>
+              <div class="metric-val" id="ov-total">0</div>
+              <div class="metric-sub up" id="ov-total-sub">—</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Pending approval</div>
+              <div class="metric-val" id="ov-pending">0</div>
+              <div class="metric-sub warn">Needs review</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Payments due</div>
+              <div class="metric-val" id="ov-payments">0</div>
+              <div class="metric-sub">Approved, unpaid</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Scrapped this month</div>
+              <div class="metric-val" id="ov-scrapped">0</div>
+              <div class="metric-sub up" id="ov-scrapped-sub">—</div>
+            </div>
+          </div>
+          <div class="section-head">
+            <div class="section-title-sm">Recent leads</div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Lead ID</th>
+                  <th>Owner</th>
+                  <th>Vehicle</th>
+                  <th>Source</th>
+                  <th>Status</th>
+                  <th>Agent</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="ov-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ========== L1 — LEADS PANEL ========== -->
+        <div id="panel-l1" class="panel">
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">New leads</div>
+              <div class="metric-val" id="l1-new-count">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Assigned</div>
+              <div class="metric-val" id="l1-assigned-count">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Submitted</div>
+              <div class="metric-val" id="l1-submitted-count">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Rejected back</div>
+              <div class="metric-val" id="l1-rejected-count">0</div>
+            </div>
+          </div>
+          <div class="section-head">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div class="section-title-sm">All leads — L1</div>
+              <button class="action-btn" onclick="openCreateLeadModal()">+ Create Lead</button>
+            </div>
+            <div class="filter-row" id="l1-filters">
+              <button class="chip active" onclick="filterL1('all',this)">All</button>
+              <button class="chip" onclick="filterL1('new',this)">New</button>
+              <button class="chip" onclick="filterL1('assigned',this)">Assigned</button>
+              <button class="chip" onclick="filterL1('pending_approval',this)">Pending</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Lead ID</th>
+                  <th>Owner</th>
+                  <th>Vehicle</th>
+                  <th>Expected</th>
+                  <th>Status</th>
+                  <th>Assigned to</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="l1-table-body"></tbody>
+            </table>
+            <div class="pagination-bar" id="pagination-l1" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- ========== L2 — APPROVALS PANEL ========== -->
+        <div id="panel-l2" class="panel">
+          <!-- Table View -->
+          <div id="l2-table-view">
+            <div class="metrics">
+              <div class="metric">
+                <div class="metric-label">Pending review</div>
+                <div class="metric-val" id="l2-pending-count">0</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Approved today</div>
+                <div class="metric-val" id="l2-approved-today">0</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Rejected today</div>
+                <div class="metric-val" id="l2-rejected-today">0</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Info needed</div>
+                <div class="metric-val" id="l2-info-count">0</div>
+              </div>
+            </div>
+            <div class="section-head">
+              <div class="section-title-sm">Pending approvals — L2</div>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Lead ID</th>
+                    <th>Owner</th>
+                    <th>Vehicle</th>
+                    <th>Agreed price</th>
+                    <th>Agent</th>
+                    <th>Submitted</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="l2-table-body"></tbody>
+              </table>
+              <div class="pagination-bar" id="pagination-l2" style="display:none;"></div>
+            </div>
+          </div>
+
+          <!-- Detail View (drill-in) -->
+          <div id="l2-detail-view" style="display:none;">
+            <button class="detail-back-btn" onclick="showL2TableView()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
+              </svg>
+              Back to list
+            </button>
+            <div class="detail-card">
+              <!-- Header -->
+              <div
+                style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--border-color); padding-bottom:16px; margin-bottom:20px;">
+                <div>
+                  <h3 id="l2-car-model"
+                    style="font-size:1.35rem; font-weight:700; letter-spacing:-0.2px; color:var(--primary-color);">
+                    Vehicle Model</h3>
+                  <span id="l2-reg-no" class="reg-plate-badge">REG</span>
+                </div>
+                <div style="text-align:right;">
+                  <span
+                    style="font-size:0.75rem; color:var(--text-secondary); display:block; font-weight:600; text-transform:uppercase;">Expected
+                    Value</span>
+                  <strong id="l2-price-expected" style="font-size:1.25rem; color:var(--success-color);">₹0</strong>
+                </div>
+              </div>
+
+              <!-- 1. Owner & Lead Identification -->
+              <div class="vahan-box" style="margin-bottom:20px;">
+                <h4 class="section-box-title" style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>1. Owner & Lead Identification</span>
+                  <button class="action-btn" onclick="openEditL2Section('owner')"
+                    style="font-size: 0.75rem; padding: 2px 8px; font-weight: 500; height: auto; margin: 0; line-height: 1.2;">Edit</button>
+                </h4>
+                <div class="vahan-row"><span>Owner Full Name</span><strong id="l2-owner-name">—</strong></div>
+                <div class="vahan-row"><span>Owner Phone Number</span><strong id="l2-owner-phone">—</strong></div>
+                <div class="vahan-row"><span>Owner Email</span><strong id="l2-owner-email">—</strong></div>
+                <div class="vahan-row"><span>Owner Address</span><strong id="l2-owner-address"
+                    style="text-align:right; max-width:60%;">—</strong></div>
+              </div>
+
+              <!-- 2. Vehicle Specifications -->
+              <div class="vahan-box" style="margin-bottom:20px;">
+                <h4 class="section-box-title" style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>2. Vehicle Specifications</span>
+                  <button class="action-btn" onclick="openEditL2Section('specs')"
+                    style="font-size: 0.75rem; padding: 2px 8px; font-weight: 500; height: auto; margin: 0; line-height: 1.2;">Edit</button>
+                </h4>
+                <div class="vahan-row"><span>Make / Manufacturer</span><strong id="l2-spec-make">—</strong></div>
+                <div class="vahan-row"><span>Model Name</span><strong id="l2-spec-model">—</strong></div>
+                <div class="vahan-row"><span>Manufacturing Year</span><strong id="l2-spec-year">—</strong></div>
+                <div class="vahan-row"><span>Colour</span><strong id="l2-spec-colour">—</strong></div>
+                <div class="vahan-row"><span>Fuel Type</span><strong id="l2-spec-fuel">—</strong></div>
+                <div class="vahan-row"><span>KMs Driven</span><strong id="l2-spec-kms">—</strong></div>
+                <div class="vahan-row"><span>Vehicle Registration Number</span><strong id="l2-spec-reg"
+                    style="font-family:monospace;">—</strong></div>
+                <div class="vahan-row"><span>Chassis Serial Number</span><strong id="l2-spec-chassis"
+                    style="font-family:monospace;">—</strong></div>
+              </div>
+
+              <!-- Vahan Verification Report -->
+              <div class="vahan-box" style="margin-bottom:20px; border-color:var(--primary-color);">
+                <h4 class="section-box-title"
+                  style="color:var(--primary-color); display:flex; justify-content:space-between; align-items:center;">
+                  <span>Vahan Verification Report</span>
+                  <button class="action-btn" onclick="openEditVahanDialog()"
+                    style="font-size: 0.75rem; padding: 2px 8px; font-weight: 500; height: auto; margin: 0; line-height: 1.2;">Edit</button>
+                </h4>
+                <div class="vahan-row"><span>Insurance Fitness</span><strong id="vahan-fitness" class="keep-color"
+                    style="color:var(--success-color);">Active</strong></div>
+                <div class="vahan-row"><span>Hypothecation (HP)</span><strong id="vahan-hp">None</strong></div>
+                <div class="vahan-row"><span>Challan Records</span><strong id="vahan-challans" class="keep-color"
+                    style="color:var(--error-color);">0 Active</strong></div>
+                <div class="vahan-row"><span>Blacklist Check</span><strong id="vahan-blacklist" class="keep-color"
+                    style="color:var(--success-color);">Clean</strong></div>
+              </div>
+
+              <!-- 3. Condition Assessment & Accessories -->
+              <div class="vahan-box" style="margin-bottom:20px;">
+                <h4 class="section-box-title" style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>3. Condition Assessment & Accessories</span>
+                  <button class="action-btn" onclick="openEditL2Section('condition')"
+                    style="font-size: 0.75rem; padding: 2px 8px; font-weight: 500; height: auto; margin: 0; line-height: 1.2;">Edit</button>
+                </h4>
+                <div style="padding:16px;">
+                  <div style="margin-bottom:12px;">
+                    <span style="font-size:0.75rem; color:var(--text-secondary); display:block; margin-bottom:4px;">Body
+                      Condition Rating (1–10)</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span id="l2-body-rating-badge" class="status-badge assigned"
+                        style="font-size:0.9rem; font-weight:bold;">-</span>
+                      <span id="l2-body-rating-desc"
+                        style="font-size:0.8rem; color:var(--text-primary); font-weight:500;">-</span>
+                    </div>
+                  </div>
+                  <div style="margin-bottom:12px;">
+                    <span
+                      style="font-size:0.75rem; color:var(--text-secondary); display:block; margin-bottom:4px;">Engine
+                      Condition Rating (1–10)</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span id="l2-engine-rating-badge" class="status-badge assigned"
+                        style="font-size:0.9rem; font-weight:bold;">-</span>
+                      <span id="l2-engine-rating-desc"
+                        style="font-size:0.8rem; color:var(--text-primary); font-weight:500;">-</span>
+                    </div>
+                  </div>
+                  <div style="margin-bottom:16px;">
+                    <span style="font-size:0.75rem; color:var(--text-secondary); display:block; margin-bottom:4px;">Tyre
+                      Condition Rating (1–10)</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span id="l2-tyre-rating-badge" class="status-badge assigned"
+                        style="font-size:0.9rem; font-weight:bold;">-</span>
+                      <span id="l2-tyre-rating-desc"
+                        style="font-size:0.8rem; color:var(--text-primary); font-weight:500;">-</span>
+                    </div>
+                  </div>
+                  <div style="margin-bottom:16px;">
+                    <span
+                      style="font-size:0.75rem; color:var(--text-secondary); display:block; margin-bottom:4px;">Accident
+                      Records & Structural Integrity</span>
+                    <div id="l2-accident-records"
+                      style="font-size:0.8rem; background:var(--surface-color); padding:10px; border-radius:var(--border-radius-md); border:1px solid var(--border-color); color:var(--text-primary); min-height:40px; white-space:pre-wrap;">
+                      None declared.</div>
+                  </div>
+                  <span
+                    style="font-size:0.75rem; color:var(--text-secondary); display:block; margin-bottom:6px;">Options
+                    Intact</span>
+                  <div class="tiles-grid" id="l2-options-tiles" style="margin-bottom:0;"></div>
+                </div>
+              </div>
+
+              <!-- 4. Pricing & Valuation Matrix -->
+              <div class="vahan-box" style="margin-bottom:20px;">
+                <h4 class="section-box-title" style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>4. Pricing & Valuation Matrix</span>
+                  <button class="action-btn" onclick="openEditL2Section('pricing')"
+                    style="font-size: 0.75rem; padding: 2px 8px; font-weight: 500; height: auto; margin: 0; line-height: 1.2;">Edit</button>
+                </h4>
+                <div class="vahan-row"><span>Expected Price</span><strong id="l2-pricing-expected">₹0</strong></div>
+                <div class="vahan-row"><span>Recommended Price</span><strong id="l2-pricing-recommended"
+                    class="keep-color" style="color:var(--success-color);">₹0</strong></div>
+                <div class="vahan-row"><span>Agreed Price</span><strong id="l2-pricing-agreed" class="keep-color"
+                    style="color:var(--primary-color);">₹0</strong></div>
+              </div>
+
+              <!-- 5. KYC Documents -->
+              <div class="vahan-box" style="margin-bottom:20px;">
+                <h4 class="section-box-title" style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>5. KYC Documents</span>
+                  <button class="action-btn" onclick="openEditL2Section('kyc')"
+                    style="font-size: 0.75rem; padding: 2px 8px; font-weight: 500; height: auto; margin: 0; line-height: 1.2;">Edit</button>
+                </h4>
+                <div class="tiles-grid" id="l2-kyc-gallery"
+                  style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:16px;"></div>
+              </div>
+
+              <!-- 6. Media Uploads -->
+              <div class="vahan-box" style="margin-bottom:20px;">
+                <h4 class="section-box-title" style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>6. Media Uploads</span>
+                  <button class="action-btn" onclick="openEditL2Section('media')"
+                    style="font-size: 0.75rem; padding: 2px 8px; font-weight: 500; height: auto; margin: 0; line-height: 1.2;">Edit</button>
+                </h4>
+                <div class="tiles-grid" id="l2-media-gallery"
+                  style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:16px;"></div>
+              </div>
+
+              <!-- 7. Payment Mode -->
+              <div class="vahan-box" style="margin-bottom:24px;">
+                <h4 class="section-box-title" style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>7. Payment Mode</span>
+                  <button class="action-btn" onclick="openEditL2Section('payment')"
+                    style="font-size: 0.75rem; padding: 2px 8px; font-weight: 500; height: auto; margin: 0; line-height: 1.2;">Edit</button>
+                </h4>
+                <div class="vahan-row"><span>Payment Method</span><strong id="l2-payment-method"
+                    style="text-transform:uppercase; color:var(--primary-color);">None</strong></div>
+                <div id="l2-payment-details-box"
+                  style="background:var(--surface-color); padding:12px; border-radius:var(--border-radius-md); border:1px solid var(--border-color); font-size:0.8rem; margin:12px 16px 16px 16px; display:none;">
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div
+                style="border-top:1px solid var(--border-color); padding-top:20px; display:flex; justify-content:space-between; align-items:center; gap:16px;">
+                <button class="premium-btn premium-btn-secondary"
+                  style="border-color:var(--error-color); color:var(--error-color);" onclick="openRejectDialog()">Reject
+                  Lot</button>
+                <button class="premium-btn premium-btn-primary" onclick="handleL2Approve()">Approve purchase</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== L3 — PAYMENTS PANEL ========== -->
+        <div id="panel-l3" class="panel">
+          <!-- Table View -->
+          <div id="l3-table-view">
+            <div class="metrics">
+              <div class="metric">
+                <div class="metric-label">Awaiting payment</div>
+                <div class="metric-val" id="l3-awaiting-count">0</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Paid today</div>
+                <div class="metric-val" id="l3-paid-today">0</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Total paid this month</div>
+                <div class="metric-val" id="l3-total-paid">₹0</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Avg payment</div>
+                <div class="metric-val" id="l3-avg-payment">₹0</div>
+              </div>
+            </div>
+            <div class="section-head">
+              <div class="section-title-sm">Approved — awaiting payment</div>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Lead ID</th>
+                    <th>Owner</th>
+                    <th>Vehicle</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Approved on</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="l3-table-body"></tbody>
+              </table>
+              <div class="pagination-bar" id="pagination-l3" style="display:none;"></div>
+            </div>
+          </div>
+
+          <!-- Detail View (drill-in) -->
+          <div id="l3-detail-view" style="display:none;">
+            <button class="detail-back-btn" onclick="showL3TableView()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
+              </svg>
+              Back to list
+            </button>
+            <div class="detail-card">
+              <!-- Header -->
+              <div
+                style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--border-color); padding-bottom:16px; margin-bottom:20px;">
+                <div>
+                  <h3 id="l3-car-model" style="font-size:1.35rem; font-weight:700; color:var(--primary-color);">Vehicle
+                    Model</h3>
+                  <span id="l3-reg-no" class="reg-plate-badge">REG</span>
+                </div>
+                <div style="text-align:right;">
+                  <span
+                    style="font-size:0.75rem; color:var(--text-secondary); display:block; font-weight:500; text-transform:uppercase;">Agreed
+                    Scrap Price</span>
+                  <strong id="l3-price-agreed" style="font-size:1.25rem; color:var(--success-color);">₹0</strong>
+                </div>
+              </div>
+
+              <!-- Seller bank coordinates -->
+              <div class="vahan-box" style="margin-bottom:24px;">
+                <h4 class="section-box-title">Seller bank coordinates</h4>
+                <div class="vahan-row"><span>Account Holder</span>
+                  <div style="display:flex; align-items:center;"><strong id="payout-acc-holder">—</strong><svg
+                      onclick="copyToClipboard(document.getElementById('payout-acc-holder').innerText, 'Account Holder')"
+                      width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round"
+                      style="cursor:pointer; margin-left:6px; opacity:0.7; transition:opacity 0.2s;"
+                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg></div>
+                </div>
+                <div class="vahan-row"><span>Bank Name</span>
+                  <div style="display:flex; align-items:center;"><strong id="payout-bank-name">—</strong><svg
+                      onclick="copyToClipboard(document.getElementById('payout-bank-name').innerText, 'Bank Name')"
+                      width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round"
+                      style="cursor:pointer; margin-left:6px; opacity:0.7; transition:opacity 0.2s;"
+                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg></div>
+                </div>
+                <div class="vahan-row"><span>Account Number</span>
+                  <div style="display:flex; align-items:center;"><strong id="payout-acc-number">—</strong><svg
+                      onclick="copyToClipboard(document.getElementById('payout-acc-number').innerText, 'Account Number')"
+                      width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round"
+                      style="cursor:pointer; margin-left:6px; opacity:0.7; transition:opacity 0.2s;"
+                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg></div>
+                </div>
+                <div class="vahan-row"><span>IFSC Code</span>
+                  <div style="display:flex; align-items:center;"><strong id="payout-ifsc">—</strong><svg
+                      onclick="copyToClipboard(document.getElementById('payout-ifsc').innerText, 'IFSC Code')"
+                      width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round"
+                      style="cursor:pointer; margin-left:6px; opacity:0.7; transition:opacity 0.2s;"
+                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg></div>
+                </div>
+              </div>
+
+              <!-- Verified Seller KYC Documents -->
+              <div class="vahan-box" style="margin-bottom:24px;">
+                <h4 class="section-box-title">Verified Seller KYC Documents</h4>
+                <div class="tiles-grid" id="l3-media-gallery"
+                  style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:16px;"></div>
+              </div>
+
+              <!-- Payout Workflow Pipeline -->
+              <h4
+                style="font-size:0.9rem; font-weight:500; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.5px; margin-bottom:12px;">
+                Payout Workflow Pipeline</h4>
+
+              <!-- Stage 1: Initiate -->
+              <div id="payment-stage-1-box" class="detail-card"
+                style="padding:16px; background:var(--surface-variant); margin-bottom:16px;">
+                <span class="status-badge assigned" id="stage-1-badge" style="margin-bottom:10px;">Stage 1 — Initiate
+                  Payout</span>
+                <form id="stage-1-form" onsubmit="handleStage1Initiate(event)">
+                  <div class="input-wrapper" style="margin-bottom:12px;">
+                    <span class="input-label" style="font-size:0.7rem;">Transaction UTR / Reference ID</span>
+                    <input type="text" id="payout-utr" class="premium-input" style="height:42px;" required
+                      placeholder="Enter bank UTR number">
+                  </div>
+                  <div class="input-wrapper" style="margin-bottom:16px;">
+                    <span class="input-label" style="font-size:0.7rem;">Payment Receipt PDF / Screenshot</span>
+                    <input type="file" id="payout-receipt-file" style="display:none;"
+                      onchange="handleReceiptFileSelected(event)">
+                    <input type="hidden" id="payout-receipt" required>
+                    <div id="payout-receipt-upload-btn" onclick="document.getElementById('payout-receipt-file').click()"
+                      style="display:flex; align-items:center; justify-content:center; gap:8px; height:42px; border:1px dashed var(--border-color); border-radius:var(--border-radius-md); background:var(--surface-color); cursor:pointer; font-size:0.8rem; color:var(--text-secondary); transition:all 0.15s;"
+                      onmouseover="this.style.borderColor='var(--primary-color)'; this.style.color='var(--text-primary)'"
+                      onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-secondary)'">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                      <span id="payout-receipt-status">Upload Receipt PDF / Photo</span>
+                    </div>
+                  </div>
+                  <button type="submit" class="premium-btn premium-btn-primary"
+                    style="width:100%; height:40px; font-size:0.85rem;">Despatch Payout Credentials</button>
+                </form>
+                <div id="stage-1-completed-message"
+                  style="display:none; font-size:0.9rem; color:var(--success-color); font-weight:500;">
+                  ✓ Payout Despatched. UTR: <span id="stage-1-saved-utr" style="font-family:monospace;"></span>
+                </div>
+              </div>
+
+              <!-- Stage 2: Confirm -->
+              <div id="payment-stage-2-box" class="detail-card"
+                style="padding:16px; background:var(--surface-variant); border-color:var(--border-color); opacity:0.5; pointer-events:none;">
+                <span class="status-badge assigned" id="stage-2-badge" style="margin-bottom:10px;">Stage 2 —
+                  Confirmation Callback</span>
+                <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:16px;">
+                  Wait for vendor acknowledgment. Click below to verify and confirm receipt of funds in the seller's
+                  account.
+                </p>
+                <div style="display:flex; gap:12px;">
+                  <button class="premium-btn premium-btn-secondary" style="flex:1; height:38px; font-size:0.8rem;"
+                    onclick="mockDownloadVoucher()">Print Receipt</button>
+                  <button class="premium-btn premium-btn-primary" style="flex:1.2; height:38px; font-size:0.8rem;"
+                    onclick="handleStage2Confirm()">Confirm Payout Receipt</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== L4 — PICKER PANEL ========== -->
+        <div id="panel-l4" class="panel">
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">Ready for pickup</div>
+              <div class="metric-val" id="l4-ready-count">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Picked up</div>
+              <div class="metric-val" id="l4-picked-count">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Ready to scrap</div>
+              <div class="metric-val" id="l4-scrap-ready">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Scrapped today</div>
+              <div class="metric-val" id="l4-scrapped-today">0</div>
+            </div>
+          </div>
+          <div class="section-head">
+            <div class="section-title-sm">Paid — assign picker</div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Lead ID</th>
+                  <th>Owner</th>
+                  <th>Vehicle</th>
+                  <th>Address</th>
+                  <th>Paid on</th>
+                  <th style="padding-left: 23px;">Assign picker</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="l4-table-body"></tbody>
+            </table>
+            <div class="pagination-bar" id="pagination-l4" style="display:none;"></div>
+          </div>
+          <div id="l4-empty" class="empty-state" style="display:none;">No paid vehicles require picker assignment at
+            this time.</div>
+        </div>
+
+        <!-- ========== FINALIZED CARS PANEL ========== -->
+        <div id="panel-finalized" class="panel">
+          <!-- Table View -->
+          <div id="finalized-table-view">
+            <div class="section-head">
+              <div class="section-title-sm">Finalized & Done Cars</div>
+              <div style="display:flex; gap:10px;">
+                <input type="text" id="finalized-search" class="premium-input"
+                  style="height:36px; width:220px; font-size:0.8rem; margin:0;" placeholder="Search vehicle number..."
+                  oninput="loadFinalizedPanel()">
+                <select id="finalized-filter" class="premium-input"
+                  style="height:36px; width:130px; font-size:0.8rem; padding:0 8px; margin:0;"
+                  onchange="loadFinalizedPanel()">
+                  <option value="all">All Finalized</option>
+                  <option value="payment_confirmed">Paid</option>
+                  <option value="scrapped">Scrapped</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Lead ID</th>
+                    <th>Owner</th>
+                    <th>Vehicle</th>
+                    <th>Reg No.</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="finalized-table-body"></tbody>
+              </table>
+              <div class="pagination-bar" id="pagination-finalized" style="display:none;"></div>
+            </div>
+          </div>
+
+          <!-- Detail View -->
+          <div id="finalized-detail-view" style="display:none;">
+            <button class="detail-back-btn" onclick="showFinalizedTableView()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
+              </svg>
+              Back to list
+            </button>
+
+            <div class="detail-card">
+              <!-- Header -->
+              <div
+                style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--border-color); padding-bottom:16px; margin-bottom:20px;">
+                <div>
+                  <h3 id="fin-car-model" style="font-size:1.35rem; font-weight:700; color:var(--primary-color);">Vehicle
+                    Model</h3>
+                  <span id="fin-reg-no" class="reg-plate-badge">REG</span>
+                </div>
+                <div style="text-align:right;">
+                  <span
+                    style="font-size:0.75rem; color:var(--text-secondary); display:block; font-weight:500; text-transform:uppercase;">Final
+                    Paid Price</span>
+                  <strong id="fin-price-paid" style="font-size:1.25rem; color:var(--success-color);">₹0</strong>
+                </div>
+              </div>
+
+              <!-- Details Grid -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+                <!-- Left Details Box -->
+                <div class="vahan-box">
+                  <h4 class="section-box-title">Vehicle Information</h4>
+                  <div class="vahan-row"><span>Make / Model</span><strong id="fin-info-model">—</strong></div>
+                  <div class="vahan-row"><span>Manufacturing Year</span><strong id="fin-info-year">—</strong></div>
+                  <div class="vahan-row"><span>Fuel Type</span><strong id="fin-info-fuel">—</strong></div>
+                  <div class="vahan-row"><span>KMs Driven</span><strong id="fin-info-kms">—</strong></div>
+                  <div class="vahan-row"><span>Chassis Number</span><strong id="fin-info-chassis"
+                      style="font-family:monospace;">—</strong></div>
+                </div>
+
+                <!-- Right Details Box -->
+                <div class="vahan-box">
+                  <h4 class="section-box-title">Acquisition & Transaction</h4>
+                  <div class="vahan-row"><span>Seller Name</span><strong id="fin-info-owner">—</strong></div>
+                  <div class="vahan-row"><span>Phone Number</span><strong id="fin-info-phone">—</strong></div>
+                  <div class="vahan-row"><span>Payment Method</span><strong id="fin-info-method"
+                      style="text-transform:uppercase; color:var(--primary-color);">—</strong></div>
+                  <div class="vahan-row"><span>Transaction UTR</span><strong id="fin-info-utr"
+                      style="font-family:monospace;">—</strong></div>
+                  <div class="vahan-row"><span>Transaction Date</span><strong id="fin-info-date">—</strong></div>
+                </div>
+              </div>
+
+              <!-- Vahan Details Box -->
+              <div class="vahan-box" style="margin-bottom:20px;">
+                <h4 class="section-box-title">Vahan Verification Details</h4>
+                <div class="vahan-row"><span>Fitness Validity</span><strong id="fin-vahan-fitness">—</strong></div>
+                <div class="vahan-row"><span>Hypothecation (HP)</span><strong id="fin-vahan-hp">—</strong></div>
+                <div class="vahan-row"><span>Challan Records</span><strong id="fin-vahan-challans">—</strong></div>
+                <div class="vahan-row"><span>Blacklist Check</span><strong id="fin-vahan-blacklist">—</strong></div>
+              </div>
+
+              <!-- Condition & Options Grid -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+                <!-- Condition Ratings -->
+                <div class="vahan-box">
+                  <h4 class="section-box-title">Condition Ratings & History</h4>
+                  <div class="vahan-row"><span>Body Condition (1-10)</span><strong id="fin-cond-body">—</strong></div>
+                  <div class="vahan-row"><span>Engine Condition (1-10)</span><strong id="fin-cond-engine">—</strong>
+                  </div>
+                  <div class="vahan-row"><span>Tyre Condition (1-10)</span><strong id="fin-cond-tyre">—</strong></div>
+                  <div class="vahan-row" style="flex-direction:column; align-items:flex-start; gap:4px;">
+                    <span style="font-size:0.75rem;">Accident History Remarks</span>
+                    <strong id="fin-cond-accident"
+                      style="font-weight:500; font-size:0.8rem; line-height:1.4; white-space:normal; width:100%;">—</strong>
+                  </div>
+                </div>
+
+                <!-- Present Options -->
+                <div class="vahan-box">
+                  <h4 class="section-box-title">Accessories & Options Present</h4>
+                  <div id="fin-options-list" style="padding:12px; display:flex; flex-wrap:wrap; gap:6px;">
+                    <!-- Loaded dynamically -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Uploaded KYC & Media Grid -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+                <!-- KYC Documents -->
+                <div class="vahan-box">
+                  <h4 class="section-box-title">Uploaded KYC Documents</h4>
+                  <div id="fin-kyc-list">
+                    <!-- Dynamic list of KYC links -->
+                  </div>
+                </div>
+
+                <!-- Media Uploads -->
+                <div class="vahan-box">
+                  <h4 class="section-box-title">Vehicle Images & Videos</h4>
+                  <div id="fin-media-list">
+                    <!-- Dynamic list of media links -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Picker & Scrapper Logs -->
+              <div class="vahan-box" id="fin-picker-scrapper-box" style="margin-bottom:24px; display:none;">
+                <h4 class="section-box-title">Operations & Dismantling Logs</h4>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:12px 16px;">
+                  <div id="fin-picker-subbox">
+                    <h5
+                      style="margin:0 0 8px 0; font-size:0.75rem; text-transform:uppercase; color:var(--primary-color); font-weight:600;">
+                      Picker Collection Details</h5>
+                    <div class="vahan-row" style="border-top:none; padding:8px 0;"><span>Picker Assigned</span><strong
+                        id="fin-pick-name">—</strong></div>
+                    <div class="vahan-row" style="padding:8px 0;"><span>Collection Date</span><strong
+                        id="fin-pick-date">—</strong></div>
+                    <div class="vahan-row" style="padding:8px 0;"><span>Handover Proof Link</span><strong
+                        id="fin-pick-proof">—</strong></div>
+                  </div>
+                  <div id="fin-scrapper-subbox">
+                    <h5
+                      style="margin:0 0 8px 0; font-size:0.75rem; text-transform:uppercase; color:var(--primary-color); font-weight:600;">
+                      Scrapper Recycling Details</h5>
+                    <div class="vahan-row" style="border-top:none; padding:8px 0;"><span>Dry Metal Weight</span><strong
+                        id="fin-scrap-weight">—</strong></div>
+                    <div class="vahan-row" style="padding:8px 0;"><span>Realized Scrap Value</span><strong
+                        id="fin-scrap-value">—</strong></div>
+                    <div class="vahan-row" style="padding:8px 0;"><span>Recovered Salvage</span><strong
+                        id="fin-scrap-salvage" style="font-size:0.8rem; font-weight:500;">—</strong></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div
+                style="border-top:1px solid var(--border-color); padding-top:20px; display:flex; justify-content:space-between; align-items:center;">
+                <span id="fin-status-badge" class="status-badge"
+                  style="font-size:0.9rem; font-weight:bold;">Status</span>
+                <button class="premium-btn premium-btn-primary" id="btn-download-pdf"
+                  style="display:flex; align-items:center; gap:8px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Save File as PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== USERS PANEL ========== -->
+        <div id="panel-users" class="panel">
+          <div class="section-head">
+            <div class="section-title-sm">All users</div>
+            <button class="action-btn" onclick="openNewUserModal()">+ New user</button>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Permissions</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body"></tbody>
+            </table>
+            <div class="pagination-bar" id="pagination-users" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- ========== AUDIT LOG PANEL ========== -->
+        <div id="panel-audit" class="panel">
+          <div class="section-head">
+            <div class="section-title-sm">Audit log</div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>User</th>
+                  <th>Action</th>
+                  <th>Lead</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table-body"></tbody>
+            </table>
+            <div class="pagination-bar" id="pagination-audit" style="display:none;"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ MODALS ============ -->
+
+  <!-- Lead Detail Modal (for New / Assigned leads) -->
+  <div class="modal-overlay" id="lead-detail-modal" onclick="closeLeadDetailModal()">
+    <div class="premium-card modal-card" onclick="event.stopPropagation()"
+      style="max-width: 600px; padding: 24px; display: flex; flex-direction: column; max-height: 85vh; overflow-y: auto;">
+      <div
+        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; flex-shrink:0;">
+        <div>
+          <h3 id="lead-detail-title"
+            style="font-family: var(--font-title); font-size: 1.25rem; font-weight: 600; margin: 0; color: var(--text-main);">
+            Lead Details</h3>
+          <span id="lead-detail-id"
+            style="font-family: monospace; font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; display: inline-block;">#101</span>
+        </div>
+        <span id="lead-detail-status" class="status-badge new">New</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 20px; flex-grow: 1;">
+        <!-- Owner info -->
+        <div>
+          <h4
+            style="margin: 0 0 10px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
+            Owner Information</h4>
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Owner Name</span>
+              <strong id="lead-detail-owner" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Phone Number</span>
+              <strong id="lead-detail-phone" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Alt Phone</span>
+              <strong id="lead-detail-altphone" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Address</span>
+              <strong id="lead-detail-address" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vehicle specs -->
+        <div>
+          <h4
+            style="margin: 0 0 10px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
+            Vehicle Specifications</h4>
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Registration No</span>
+              <strong id="lead-detail-reg" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Make & Model</span>
+              <strong id="lead-detail-vehicle" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Year & Fuel Type</span>
+              <strong id="lead-detail-year-fuel" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">KMs Driven</span>
+              <strong id="lead-detail-kms" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Expected Price</span>
+              <strong id="lead-detail-expected" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Wants New Car</span>
+              <strong id="lead-detail-exchange" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Condition & Accessories -->
+        <div>
+          <h4
+            style="margin: 0 0 10px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
+            Seller Reported Condition</h4>
+          <div
+            style="display: grid; grid-template-columns: 1fr; gap: 12px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Body
+                Condition (Seller Rated)</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="lead-detail-rating-badge" class="status-badge"
+                  style="background: var(--primary-color); color: #fff;">5/10</span>
+                <span id="lead-detail-rating-text"
+                  style="font-size: 0.85rem; color: var(--text-secondary);">Average</span>
+              </div>
+            </div>
+            <div>
+              <span
+                style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 6px;">Accessories
+                Present</span>
+              <div id="lead-detail-options" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                <!-- badges -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- L1 Valuation Details (conditionally shown) -->
+        <div id="lead-detail-valuation-section" style="display: none;">
+          <h4
+            style="margin: 0 0 10px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
+            L1 Valuation Details</h4>
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Recommended Price</span>
+              <strong id="lead-detail-val-recommended" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Offered/Agreed
+                Price</span>
+              <strong id="lead-detail-val-offered" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Chassis Number</span>
+              <strong id="lead-detail-val-chassis"
+                style="font-family: monospace; font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Accident History</span>
+              <strong id="lead-detail-val-accident" style="font-size: 0.9rem; color: var(--text-main);">—</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assignment Section -->
+        <div>
+          <h4
+            style="margin: 0 0 10px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
+            Valuation Agent Assignment</h4>
+          <div
+            style="display: flex; gap: 12px; align-items: flex-end; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div style="flex-grow: 1;">
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Assign
+                L1 Coordinator</span>
+              <select id="lead-detail-agent-select" class="premium-select" style="height: 38px; width: 100%;">
+                <!-- agents options -->
+              </select>
+            </div>
+            <button id="lead-detail-assign-btn" class="premium-btn premium-btn-primary"
+              style="height: 38px; padding: 0 20px;" onclick="saveL1AssignmentFromModal()">Assign</button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 20px; flex-shrink:0;">
+        <button class="premium-btn premium-btn-secondary" onclick="closeLeadDetailModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Reason Modal (L2) -->
+  <div class="modal-overlay" id="reject-modal" onclick="closeRejectDialog()">
+    <div class="premium-card modal-card" onclick="event.stopPropagation()">
+      <h3 style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px;">Specify
+        Rejection Grounds</h3>
+      <div class="input-wrapper" style="margin-bottom:24px;">
+        <span class="input-label">Reason for Rejection</span>
+        <textarea id="reject-reason" class="premium-input" style="height:100px; resize:none; padding:12px;" required
+          placeholder="Explain why the lot is rejected..."></textarea>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button class="premium-btn premium-btn-secondary" onclick="closeRejectDialog()">Cancel</button>
+        <button class="premium-btn premium-btn-primary" style="background-color:var(--error-color);"
+          onclick="handleL2Reject()">Confirm Rejection</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Create Lead Modal (Admin) -->
+  <div class="modal-overlay" id="create-lead-modal" onclick="closeCreateLeadModal()">
+    <div class="premium-card modal-card" onclick="event.stopPropagation()" style="max-width:600px; max-height: 90vh; overflow-y: auto;">
+      <h3 style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px;">Create New Lead</h3>
+      
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div class="input-wrapper">
+          <span class="input-label">Owner Full Name *</span>
+          <input type="text" id="create-lead-owner-name" class="premium-input" style="height:40px;" required placeholder="Owner name">
+        </div>
+        <div class="input-wrapper">
+          <span class="input-label">Phone Number *</span>
+          <input type="tel" id="create-lead-phone" class="premium-input" style="height:40px;" required placeholder="e.g. 9876543210">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div class="input-wrapper">
+          <span class="input-label">Alternate Phone</span>
+          <input type="tel" id="create-lead-alt-phone" class="premium-input" style="height:40px;" placeholder="Alt phone number">
+        </div>
+        <div class="input-wrapper">
+          <span class="input-label">Vehicle Registration Number *</span>
+          <input type="text" id="create-lead-vehicle-no" class="premium-input" style="height:40px;" required placeholder="e.g. DL3CAQ9981">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+        <div class="input-wrapper">
+          <span class="input-label">Make / Manufacturer *</span>
+          <input type="text" id="create-lead-make" class="premium-input" style="height:40px;" required placeholder="e.g. Hyundai">
+        </div>
+        <div class="input-wrapper">
+          <span class="input-label">Model Name *</span>
+          <input type="text" id="create-lead-model" class="premium-input" style="height:40px;" required placeholder="e.g. i20">
+        </div>
+        <div class="input-wrapper">
+          <span class="input-label">Manufacturing Year *</span>
+          <input type="number" id="create-lead-year" class="premium-input" style="height:40px;" required placeholder="e.g. 2015">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+        <div class="input-wrapper">
+          <span class="input-label">Colour</span>
+          <input type="text" id="create-lead-colour" class="premium-input" style="height:40px;" placeholder="e.g. Silver">
+        </div>
+        <div class="input-wrapper">
+          <span class="input-label">Fuel Type *</span>
+          <select id="create-lead-fuel" class="premium-select" style="height:40px; width: 100%; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-primary); border-radius: 8px; padding: 0 10px;" required>
+            <option value="">Select...</option>
+            <option value="Petrol">Petrol</option>
+            <option value="Diesel">Diesel</option>
+            <option value="CNG">CNG</option>
+            <option value="LPG">LPG</option>
+            <option value="Electric">Electric</option>
+            <option value="Hybrid">Hybrid</option>
+          </select>
+        </div>
+        <div class="input-wrapper">
+          <span class="input-label">KMs Driven *</span>
+          <input type="number" id="create-lead-kms" class="premium-input" style="height:40px;" required placeholder="e.g. 85000">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div class="input-wrapper">
+          <span class="input-label">Expected Price (₹) *</span>
+          <input type="number" id="create-lead-expected" class="premium-input" style="height:40px;" required placeholder="e.g. 150000">
+        </div>
+        <div class="input-wrapper" style="display:flex; align-items:center; height:100%; padding-top:20px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; color:var(--text-primary);">
+            <input type="checkbox" id="create-lead-new-car" style="width:18px; height:18px; accent-color:var(--primary-color);">
+            Wants new car?
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px;">
+        <button class="premium-btn premium-btn-secondary" onclick="closeCreateLeadModal()">Cancel</button>
+        <button class="premium-btn premium-btn-primary" onclick="handleCreateLeadSubmit()">Create Lead</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Add New Employee Modal -->
+  <div class="modal-overlay" id="user-modal" onclick="closeNewUserModal()">
+    <div class="premium-card modal-card" onclick="event.stopPropagation()" style="max-width:480px;">
+      <h3 style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px;">Enroll Staff
+        Member</h3>
+      <div class="input-wrapper">
+        <span class="input-label">Full Name</span>
+        <input type="text" id="new-user-name" class="premium-input" style="height:40px;" required
+          placeholder="e.g. Alok Sharma">
+      </div>
+      <div class="input-wrapper">
+        <span class="input-label">Email Address</span>
+        <input type="email" id="new-user-email" class="premium-input" style="height:40px;" required
+          placeholder="name@ldr.com">
+      </div>
+      <div class="input-wrapper">
+        <span class="input-label">Mobile Number</span>
+        <input type="tel" id="new-user-phone" class="premium-input" style="height:40px;" required
+          placeholder="e.g. 9876543210">
+      </div>
+      <div class="input-wrapper" style="margin-bottom:16px;">
+        <span class="input-label">Initial Password</span>
+        <input type="password" id="new-user-pass" class="premium-input" style="height:40px;" required
+          placeholder="••••••••">
+      </div>
+      <div style="margin-bottom:24px;">
+        <span class="input-label" style="display:block; margin-bottom:10px;">Select Permissions Keys:</span>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-l1"
+              class="md-checkbox" value="l1"> L1 — Agent</label>
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-l2"
+              class="md-checkbox" value="l2"> L2 — Manager</label>
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-l3"
+              class="md-checkbox" value="l3"> L3 — Finance</label>
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-picker"
+              class="md-checkbox" value="l4_picker"> L4 — Picker</label>
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-scrapper"
+              class="md-checkbox" value="l4_scrapper"> L4 — Scrapper</label>
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-inspect"
+              class="md-checkbox" value="onsite_inspect"> Onsite Inspector</label>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button class="premium-btn premium-btn-secondary" onclick="closeNewUserModal()">Cancel</button>
+        <button class="premium-btn premium-btn-primary" onclick="handleCreateUser()">Enroll Staff</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Staff Member Modal -->
+  <div class="modal-overlay" id="edit-user-modal" onclick="closeEditUserModal()">
+    <div class="premium-card modal-card" onclick="event.stopPropagation()" style="max-width:480px; padding: 24px;">
+      <h3 id="edit-user-modal-title"
+        style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px; color:var(--text-main);">
+        Edit Staff Member</h3>
+
+      <div class="input-wrapper">
+        <span class="input-label">Full Name</span>
+        <input type="text" id="edit-user-name" class="premium-input" style="height:40px;" required
+          placeholder="e.g. Alok Sharma">
+      </div>
+      <div class="input-wrapper">
+        <span class="input-label">Email Address</span>
+        <input type="email" id="edit-user-email" class="premium-input" style="height:40px;" required
+          placeholder="name@ldr.com">
+      </div>
+      <div class="input-wrapper">
+        <span class="input-label">Mobile Number</span>
+        <input type="tel" id="edit-user-phone" class="premium-input" style="height:40px;" required
+          placeholder="e.g. 9876543210">
+      </div>
+      <div class="input-wrapper" style="margin-bottom:16px;">
+        <span class="input-label">Password</span>
+        <input type="password" id="edit-user-pass" class="premium-input" style="height:40px;" required
+          placeholder="••••••••">
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <span class="input-label" style="display:block; margin-bottom:10px;">Select Permissions Keys:</span>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-l1"
+              class="md-checkbox" value="l1"> L1 — Agent</label>
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-l2"
+              class="md-checkbox" value="l2"> L2 — Manager</label>
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-l3"
+              class="md-checkbox" value="l3"> L3 — Finance</label>
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-picker"
+              class="md-checkbox" value="l4_picker"> L4 — Picker</label>
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox"
+              id="edit-user-perm-scrapper" class="md-checkbox" value="l4_scrapper"> L4 — Scrapper</label>
+          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-inspect"
+              class="md-checkbox" value="onsite_inspect"> Onsite Inspector</label>
+        </div>
+      </div>
+
+      <div style="margin-bottom:24px; border-top:1px solid var(--border-color); padding-top:16px;">
+        <label class="md-checkbox-label"
+          style="font-size:0.85rem; color:var(--error-color); font-weight:600; display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="edit-user-blocked" class="md-checkbox"> Blocked (Suspends staff access)
+        </label>
+      </div>
+
+      <div
+        style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid var(--border-color); padding-top:12px;">
+        <button class="premium-btn premium-btn-secondary" style="height:36px; padding:0 16px; font-size:0.85rem;"
+          onclick="closeEditUserModal()">Cancel</button>
+        <button class="premium-btn premium-btn-primary" style="height:36px; padding:0 16px; font-size:0.85rem;"
+          onclick="saveUserDetails()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Vahan Details Modal -->
+  <div class="modal-overlay" id="edit-vahan-modal" onclick="closeEditVahanDialog()">
+    <div class="premium-card modal-card" onclick="event.stopPropagation()" style="max-width:440px;">
+      <h3 style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px;">Edit Vahan
+        Details</h3>
+      <div class="input-wrapper" style="margin-bottom:12px;">
+        <span class="input-label">Insurance Fitness</span>
+        <input type="text" id="edit-vahan-fitness" class="premium-input" style="height:40px;" required
+          placeholder="e.g. Valid to 14-Oct-2029">
+      </div>
+      <div class="input-wrapper" style="margin-bottom:12px;">
+        <span class="input-label">Hypothecation (HP)</span>
+        <input type="text" id="edit-vahan-hp" class="premium-input" style="height:40px;" required
+          placeholder="e.g. None (No Lien) or Bank Name">
+      </div>
+      <div class="input-wrapper" style="margin-bottom:12px;">
+        <span class="input-label">Challan Records (Count)</span>
+        <input type="number" id="edit-vahan-challans" class="premium-input" style="height:40px;" required
+          placeholder="e.g. 0">
+      </div>
+      <div class="input-wrapper" style="margin-bottom:24px;">
+        <span class="input-label">Blacklist Check</span>
+        <input type="text" id="edit-vahan-blacklist" class="premium-input" style="height:40px;" required
+          placeholder="e.g. Clean">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button class="premium-btn premium-btn-secondary" onclick="closeEditVahanDialog()">Cancel</button>
+        <button class="premium-btn premium-btn-primary" onclick="handleSaveVahanDetails()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit L2 Request Modal -->
+  <div class="modal-overlay" id="edit-l2-request-modal" onclick="closeEditL2RequestDialog()">
+    <div class="premium-card modal-card" onclick="event.stopPropagation()"
+      style="max-width:640px; width:90%; display:flex; flex-direction:column; max-height:85vh;">
+      <h3 id="edit-l2-modal-title"
+        style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:12px; flex-shrink:0;">
+        Edit Request Details</h3>
+      <div style="overflow-y:auto; flex:1; padding-right:8px; margin-bottom:16px;">
+
+        <!-- Section 1: Owner Details -->
+        <div id="edit-l2-section-owner">
+          <h4
+            style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--primary-color); border-bottom:1px solid var(--border-color); padding-bottom:6px; margin:16px 0 12px 0; letter-spacing:0.05em;">
+            1. Owner Details</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Owner Name</span>
+              <input type="text" id="edit-l2-owner-name" class="premium-input" style="height:38px;">
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Phone Number</span>
+              <input type="text" id="edit-l2-owner-phone" class="premium-input" style="height:38px;">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Email Address</span>
+              <input type="email" id="edit-l2-owner-email" class="premium-input" style="height:38px;">
+            </div>
+          </div>
+          <div class="input-wrapper" style="margin-bottom:0;">
+            <span class="input-label" style="font-size:0.75rem;">Address</span>
+            <textarea id="edit-l2-owner-address" class="premium-input"
+              style="height:60px; resize:none; padding:10px;"></textarea>
+          </div>
+        </div>
+
+        <!-- Section 2: Vehicle Specs -->
+        <div id="edit-l2-section-specs">
+          <h4
+            style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--primary-color); border-bottom:1px solid var(--border-color); padding-bottom:6px; margin:20px 0 12px 0; letter-spacing:0.05em;">
+            2. Vehicle Specifications</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Make / Manufacturer</span>
+              <input type="text" id="edit-l2-make" class="premium-input" style="height:38px;">
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Model Name</span>
+              <input type="text" id="edit-l2-model" class="premium-input" style="height:38px;">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Year</span>
+              <input type="number" id="edit-l2-year" class="premium-input" style="height:38px;">
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Colour</span>
+              <input type="text" id="edit-l2-colour" class="premium-input" style="height:38px;">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Fuel Type</span>
+              <select id="edit-l2-fuel" class="premium-input" style="height:38px; padding:0 12px;">
+                <option value="Petrol">Petrol</option>
+                <option value="Diesel">Diesel</option>
+                <option value="CNG">CNG</option>
+                <option value="Electric">Electric</option>
+                <option value="Hybrid">Hybrid</option>
+              </select>
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">KMs Driven</span>
+              <input type="number" id="edit-l2-kms" class="premium-input" style="height:38px;">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Registration Number</span>
+              <input type="text" id="edit-l2-reg-no" class="premium-input"
+                style="height:38px; font-family:monospace; text-transform:uppercase;">
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Chassis Number</span>
+              <input type="text" id="edit-l2-chassis" class="premium-input"
+                style="height:38px; font-family:monospace; text-transform:uppercase;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Condition Ratings -->
+        <div id="edit-l2-section-condition">
+          <h4
+            style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--primary-color); border-bottom:1px solid var(--border-color); padding-bottom:6px; margin:20px 0 12px 0; letter-spacing:0.05em;">
+            3. Condition Ratings & History</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Body Condition (1-10)</span>
+              <input type="number" id="edit-l2-cond-body" min="1" max="10" class="premium-input" style="height:38px;">
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Engine Condition (1-10)</span>
+              <input type="number" id="edit-l2-cond-engine" min="1" max="10" class="premium-input" style="height:38px;">
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Tyre Condition (1-10)</span>
+              <input type="number" id="edit-l2-cond-tyre" min="1" max="10" class="premium-input" style="height:38px;">
+            </div>
+          </div>
+          <div class="input-wrapper" style="margin-bottom:12px;">
+            <span class="input-label" style="font-size:0.75rem;">Accident History Remarks</span>
+            <input type="text" id="edit-l2-accident" class="premium-input" style="height:38px;"
+              placeholder="e.g. Minor scratch on front bumper, etc.">
+          </div>
+
+          <!-- Accessories checklist -->
+          <span class="input-label" style="font-size:0.75rem; display:block; margin-bottom:8px;">Accessories & Options
+            Intact</span>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px 20px; margin-bottom:8px; padding:0 4px;">
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-l2-opt-battery"
+                class="md-checkbox"> Battery</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-l2-opt-ac"
+                class="md-checkbox"> AC</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-l2-opt-music"
+                class="md-checkbox"> Music System</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-l2-opt-airbags"
+                class="md-checkbox"> Airbags</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-l2-opt-sunroof"
+                class="md-checkbox"> Sunroof</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-l2-opt-spare"
+                class="md-checkbox"> Spare Tyre</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-l2-opt-jack"
+                class="md-checkbox"> Jack & Tools</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-l2-opt-lock"
+                class="md-checkbox"> Central Locking</label>
+          </div>
+        </div>
+
+        <!-- Section 4: Pricing -->
+        <div id="edit-l2-section-pricing">
+          <h4
+            style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--primary-color); border-bottom:1px solid var(--border-color); padding-bottom:6px; margin:20px 0 12px 0; letter-spacing:0.05em;">
+            4. Pricing Valuation (₹)</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Expected Price</span>
+              <input type="number" id="edit-l2-price-expected" class="premium-input" style="height:38px;">
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Recommended Price</span>
+              <input type="number" id="edit-l2-price-recommended" class="premium-input" style="height:38px;">
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Agreed Price</span>
+              <input type="number" id="edit-l2-price-agreed" class="premium-input" style="height:38px;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 5: KYC Documents -->
+        <div id="edit-l2-section-kyc">
+          <h4
+            style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--primary-color); border-bottom:1px solid var(--border-color); padding-bottom:6px; margin:20px 0 12px 0; letter-spacing:0.05em;">
+            5. KYC Documents</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">RC Book (Front)</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-kyc-rcfront"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-kyc-rcfront" src=""
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-kyc-rcfront" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-kyc-rcfront" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-kyc-rcfront" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'kyc-rcfront')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-kyc-rcfront').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">RC Book (Back)</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-kyc-rcback"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-kyc-rcback" src="" style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-kyc-rcback" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-kyc-rcback" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-kyc-rcback" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'kyc-rcback')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-kyc-rcback').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Aadhar Card</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-kyc-aadhar"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-kyc-aadhar" src="" style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-kyc-aadhar" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-kyc-aadhar" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-kyc-aadhar" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'kyc-aadhar')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-kyc-aadhar').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">PAN Card</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-kyc-pan"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-kyc-pan" src="" style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-kyc-pan" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-kyc-pan" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-kyc-pan" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'kyc-pan')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-kyc-pan').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Insurance Policy</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-kyc-insurance"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-kyc-insurance" src=""
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-kyc-insurance" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-kyc-insurance" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-kyc-insurance" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'kyc-insurance')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-kyc-insurance').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">NOC</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-kyc-noc"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-kyc-noc" src="" style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-kyc-noc" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-kyc-noc" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-kyc-noc" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'kyc-noc')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-kyc-noc').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+          </div>
+          <div class="input-wrapper" style="margin-bottom:0;">
+            <span class="input-label" style="font-size:0.75rem;">Form 35</span>
+            <div
+              style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+              <div id="prev-container-kyc-form35"
+                style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <img id="prev-img-kyc-form35" src="" style="width:100%; height:100%; object-fit:cover; display:none;">
+                <svg id="prev-icon-kyc-form35" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="var(--text-secondary)" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+              </div>
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                <input type="text" id="edit-l2-kyc-form35" class="premium-input"
+                  style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                  placeholder="No file selected">
+                <input type="file" id="file-input-kyc-form35" style="display:none;"
+                  onchange="handleL2FileSelected(event, 'kyc-form35')">
+              </div>
+              <button class="action-btn" onclick="document.getElementById('file-input-kyc-form35').click()"
+                style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 6: Media Uploads -->
+        <div id="edit-l2-section-media">
+          <h4
+            style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--primary-color); border-bottom:1px solid var(--border-color); padding-bottom:6px; margin:20px 0 12px 0; letter-spacing:0.05em;">
+            6. Media Uploads</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Exterior Front</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-media-extfront"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-media-extfront" src=""
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-media-extfront" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-media-extfront" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-media-extfront" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'media-extfront')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-media-extfront').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Exterior Rear</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-media-extrear"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-media-extrear" src=""
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-media-extrear" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-media-extrear" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-media-extrear" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'media-extrear')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-media-extrear').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Exterior Left</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-media-extleft"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-media-extleft" src=""
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-media-extleft" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-media-extleft" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-media-extleft" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'media-extleft')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-media-extleft').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Exterior Right</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-media-extright"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-media-extright" src=""
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-media-extright" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-media-extright" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-media-extright" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'media-extright')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-media-extright').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Interior View</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-media-interior"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-media-interior" src=""
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-media-interior" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-media-interior" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-media-interior" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'media-interior')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-media-interior').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Engine Bay</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-media-engine"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-media-engine" src=""
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-media-engine" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-media-engine" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-media-engine" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'media-engine')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-media-engine').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Odometer</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-media-odometer"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-media-odometer" src=""
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-media-odometer" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-media-odometer" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-media-odometer" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'media-odometer')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-media-odometer').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+            <div class="input-wrapper" style="margin-bottom:0;">
+              <span class="input-label" style="font-size:0.75rem;">Damage Spots</span>
+              <div
+                style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+                <div id="prev-container-media-damage"
+                  style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img id="prev-img-media-damage" src=""
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <svg id="prev-icon-media-damage" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                  <input type="text" id="edit-l2-media-damage" class="premium-input"
+                    style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                    placeholder="No file selected">
+                  <input type="file" id="file-input-media-damage" style="display:none;"
+                    onchange="handleL2FileSelected(event, 'media-damage')">
+                </div>
+                <button class="action-btn" onclick="document.getElementById('file-input-media-damage').click()"
+                  style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+              </div>
+            </div>
+          </div>
+          <div class="input-wrapper" style="margin-bottom:0;">
+            <span class="input-label" style="font-size:0.75rem;">Walkaround Video</span>
+            <div
+              style="display:flex; align-items:center; gap:10px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:6px 10px; background:var(--surface-color); height:48px;">
+              <div id="prev-container-media-walkaround"
+                style="width:36px; height:36px; border-radius:4px; overflow:hidden; background:var(--surface-variant); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <img id="prev-img-media-walkaround" src=""
+                  style="width:100%; height:100%; object-fit:cover; display:none;">
+                <svg id="prev-icon-media-walkaround" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="var(--text-secondary)" stroke-width="2">
+                  <polygon points="23 7 16 12 23 17" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" />
+                </svg>
+              </div>
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+                <input type="text" id="edit-l2-media-walkaround" class="premium-input"
+                  style="height:22px; border:none; padding:0; background:transparent; font-size:0.75rem; text-overflow:ellipsis; box-shadow:none; margin:0;"
+                  placeholder="No file selected">
+                <input type="file" id="file-input-media-walkaround" style="display:none;"
+                  onchange="handleL2FileSelected(event, 'media-walkaround')">
+              </div>
+              <button class="action-btn" onclick="document.getElementById('file-input-media-walkaround').click()"
+                style="padding:2px 8px; font-size:0.7rem; height:auto; margin:0; line-height:1.2;">Upload</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 7: Payment coordinates -->
+        <div id="edit-l2-section-payment">
+          <h4
+            style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--primary-color); border-bottom:1px solid var(--border-color); padding-bottom:6px; margin:20px 0 12px 0; letter-spacing:0.05em;">
+            7. Payment Method & Coordinates</h4>
+          <div class="input-wrapper" style="margin-bottom:12px;">
+            <span class="input-label" style="font-size:0.75rem;">Payment Mode</span>
+            <select id="edit-l2-pay-mode" class="premium-input" style="height:38px; padding:0 12px;"
+              onchange="toggleEditL2PaymentFields()">
+              <option value="upi">UPI ID</option>
+              <option value="cash">Cash Handover</option>
+              <option value="bank">Bank Transfer (NEFT/IMPS)</option>
+            </select>
+          </div>
+
+          <!-- UPI field -->
+          <div id="edit-l2-pay-upi-box" class="input-wrapper" style="margin-bottom:0;">
+            <span class="input-label" style="font-size:0.75rem;">UPI ID</span>
+            <input type="text" id="edit-l2-pay-upi" class="premium-input" style="height:38px;"
+              placeholder="e.g. seller@okaxis">
+          </div>
+
+          <!-- Bank fields -->
+          <div id="edit-l2-pay-bank-box" style="display:none; gap:12px; flex-direction:column;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="input-wrapper" style="margin-bottom:0;">
+                <span class="input-label" style="font-size:0.75rem;">Account Holder Name</span>
+                <input type="text" id="edit-l2-pay-holder" class="premium-input" style="height:38px;">
+              </div>
+              <div class="input-wrapper" style="margin-bottom:0;">
+                <span class="input-label" style="font-size:0.75rem;">Bank Name</span>
+                <input type="text" id="edit-l2-pay-bankname" class="premium-input" style="height:38px;">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="input-wrapper" style="margin-bottom:0;">
+                <span class="input-label" style="font-size:0.75rem;">Account Number</span>
+                <input type="text" id="edit-l2-pay-account" class="premium-input"
+                  style="height:38px; font-family:monospace;">
+              </div>
+              <div class="input-wrapper" style="margin-bottom:0;">
+                <span class="input-label" style="font-size:0.75rem;">IFSC Code</span>
+                <input type="text" id="edit-l2-pay-ifsc" class="premium-input"
+                  style="height:38px; font-family:monospace; text-transform:uppercase;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div
+        style="display:flex; justify-content:flex-end; gap:12px; flex-shrink:0; border-top:1px solid var(--border-color); padding-top:12px;">
+        <button class="premium-btn premium-btn-secondary" onclick="closeEditL2RequestDialog()">Cancel</button>
+        <button class="premium-btn premium-btn-primary" onclick="handleSaveL2RequestDetails()">Save Request
+          Details</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Media Lightbox Modal -->
+  <div class="modal-overlay" id="lightbox-modal" onclick="closeMediaLightbox()">
+    <div class="premium-card modal-card" onclick="event.stopPropagation()"
+      style="max-width:540px; text-align:center; padding:24px;">
+      <h3 id="lightbox-title"
+        style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:12px;">Media Preview
+      </h3>
+      <div id="lightbox-preview"
+        style="width:100%; height:260px; border-radius:var(--border-radius-lg); background:linear-gradient(135deg,#1e293b,#0f172a); border:1px solid var(--border-color); display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:20px; color:var(--text-secondary); position:relative; overflow:hidden;">
+        <div
+          style="position:absolute; top:0; left:0; right:0; bottom:0; background:radial-gradient(circle at center, rgba(14,165,233,0.15) 0%, transparent 70%);">
+        </div>
+        <svg id="lightbox-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)"
+          stroke-width="1.2" style="margin-bottom:16px; z-index:1;"></svg>
+        <span id="lightbox-label"
+          style="font-family:monospace; font-size:0.95rem; color:var(--text-primary); font-weight:600; z-index:1;">FILE_NAME.JPG</span>
+        <span id="lightbox-type"
+          style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px; z-index:1;">Vehicle Photo</span>
+        <div
+          style="position:absolute; bottom:12px; font-size:0.75rem; color:var(--text-secondary); background:rgba(0,0,0,0.4); padding:4px 8px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); z-index:1;">
+          Verified Encryption Hash: 256-bit AES
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:0.8rem; color:var(--success-color); display:flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          Documents Authenticated
+        </span>
+        <div style="display:flex; gap:12px;">
+          <button class="premium-btn premium-btn-secondary" style="height:36px; padding:0 16px; font-size:0.8rem;"
+            onclick="closeMediaLightbox()">Close</button>
+          <button class="premium-btn premium-btn-primary" style="height:36px; padding:0 16px; font-size:0.8rem;"
+            onclick="mockDownloadFile()">Download</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="admin.js"></script>
+</body>
+
+</html>

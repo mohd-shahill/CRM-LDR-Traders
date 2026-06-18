@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onsite Inspection Pad — RVSF - LDR TRADERS</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <style>
+    /* ===== ONSITE SHELL ===== */
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background-color: var(--bg-color);
+    }
+
+    .topbar {
+      height: 60px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--surface-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topbar-logo {
+      font-family: var(--font-title);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .topbar-logo svg {
+      color: var(--primary-color);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border-color);
+      background: none;
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-speed);
+    }
+
+    .icon-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      background-color: var(--surface-variant);
+    }
+
+    /* ===== CONTENT LAYOUT ===== */
+    .content-container {
+      flex: 1;
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .content-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ===== LEFT SIDEBAR: AUCTIONS ===== */
+    .auction-list-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      height: fit-content;
+    }
+
+    .auction-item {
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      padding: 14px;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      background: var(--bg-color);
+    }
+
+    .auction-item:hover {
+      border-color: var(--primary-color);
+      background: var(--surface-variant);
+    }
+
+    .auction-item.active {
+      border-color: var(--primary-color);
+      background: var(--primary-container);
+    }
+
+    /* ===== RIGHT SIDE: LOT WORKSPACE ===== */
+    .workspace-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-lg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .lot-header {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .lot-info h2 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+    }
+
+    .vehicle-eval-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .vehicle-card {
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      padding: 16px;
+      background: var(--surface-variant);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all var(--transition-speed);
+    }
+
+    .vehicle-card.inspected {
+      border-color: var(--success-color);
+      background: var(--success-bg);
+    }
+
+    .vehicle-card.skipped {
+      border-color: var(--error-color);
+      background: rgba(239, 68, 68, 0.05);
+    }
+
+    .vehicle-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .badge-status {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .badge-status.pending {
+      background: var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    .badge-status.inspected {
+      background: var(--success-color);
+      color: white;
+    }
+
+    .badge-status.skipped {
+      background: var(--error-color);
+      color: white;
+    }
+
+    .eval-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: auto;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+          <circle cx="7" cy="17" r="2" />
+          <path d="M9 17h6" />
+          <circle cx="17" cy="17" r="2" />
+        </svg>
+        RVSF - LDR ONSITE<span style="color: var(--primary-color);">INSPECTION</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="user-display-name"
+        style="font-size: 0.85rem; font-weight: 500; color: var(--text-primary);">Inspector</span>
+      <button class="theme-toggle-btn icon-btn" aria-label="Toggle Theme"></button>
+      <button class="icon-btn" aria-label="Sign Out" onclick="Auth.logout()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== CONTENT ===== -->
+  <main class="content-container">
+
+    <!-- Left: Auctions Sidebar -->
+    <section class="auction-list-card">
+      <h3 style="font-family: var(--font-title); font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">
+        Auction Schedules</h3>
+      <div id="auction-list" style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- Loaded dynamically -->
+      </div>
+    </section>
+
+    <!-- Right: Lots and Vehicles Workspace -->
+    <section class="workspace-card" id="onsite-workspace">
+      <div class="lot-header">
+        <div class="lot-info">
+          <h2 id="lot-name-display">Select an Auction</h2>
+          <p id="lot-schedule-display" style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px;"></p>
+        </div>
+      </div>
+
+      <div id="vehicles-list-container" style="display: flex; flex-direction: column; gap: 16px;">
+        <p style="color: var(--text-secondary); text-align: center; margin: 40px 0;">No auction selected.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    let activeAuctionId = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await Auth.checkSession();
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      await Api.syncAll();
+
+      const hasAccess = user.permissions.includes('onsite_inspect') || user.is_super_admin;
+      if (!hasAccess) {
+        alert('Access Denied: Onsite Inspector permissions required.');
+        Auth.logout();
+        return;
+      }
+
+      document.getElementById('user-display-name').innerText = user.name;
+      Utils.initTheme();
+      loadAuctions();
+    });
+
+    function loadAuctions() {
+      const auctions = Api.getAuctions();
+      const container = document.getElementById('auction-list');
+      container.innerHTML = '';
+
+      if (auctions.length === 0) {
+        container.innerHTML = '<p style="font-size: 0.85rem; color: var(--text-secondary);">No scheduled auctions available.</p>';
+        return;
+      }
+
+      auctions.forEach((auc, index) => {
+        const item = document.createElement('div');
+        item.className = `auction-item ${activeAuctionId === auc.id ? 'active' : ''}`;
+        item.onclick = () => selectAuction(auc.id);
+        item.innerHTML = `
+          <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${auc.platform} - Lot ${auc.lots.length}</div>
+          <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px; font-family: monospace;">${auc.auctionNumber}</div>
+          <div style="font-size: 0.72rem; color: var(--primary-color); margin-top: 8px; font-weight: 500;">Schedule: ${auc.inspectionSchedule}</div>
+        `;
+        container.appendChild(item);
+
+        if (index === 0 && !activeAuctionId) {
+          selectAuction(auc.id);
+        }
+      });
+    }
+
+    function selectAuction(auctionId) {
+      activeAuctionId = auctionId;
+      document.querySelectorAll('.auction-item').forEach(el => el.classList.remove('active'));
+      loadAuctions(); // Refresh active classes
+
+      const auctions = Api.getAuctions();
+      const auc = auctions.find(a => a.id === auctionId);
+      if (!auc) return;
+
+      document.getElementById('lot-name-display').innerText = auc.lots[0] ? auc.lots[0].lotName : 'Empty Lot';
+      document.getElementById('lot-schedule-display').innerText = `Yard Location: ${auc.lots[0]?.location || 'N/A'} | Schedule: ${auc.inspectionSchedule}`;
+
+      const container = document.getElementById('vehicles-list-container');
+      container.innerHTML = '';
+
+      const vehicles = auc.lots[0]?.vehicles || [];
+      if (vehicles.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); margin: 30px 0;">No vehicles in this lot.</p>';
+        return;
+      }
+
+      const grid = document.createElement('div');
+      grid.className = 'vehicle-eval-grid';
+
+      vehicles.forEach((veh, index) => {
+        const card = document.createElement('div');
+        card.className = `vehicle-card ${veh.inspectionStatus.toLowerCase()}`;
+        card.innerHTML = `
+          <div class="vehicle-meta">
+            <div>
+              <strong style="font-size: 1rem; color: var(--text-primary);">${veh.make} ${veh.model}</strong>
+              <span style="display: block; font-size: 0.75rem; color: var(--text-secondary); font-family: monospace; margin-top: 2px;">Reg No: ${veh.regNo}</span>
+            </div>
+            <span class="badge-status ${veh.inspectionStatus.toLowerCase()}">${veh.inspectionStatus}</span>
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-secondary);">Manufacturing Year: ${veh.year}</div>
+          <div class="eval-actions">
+            <button class="premium-btn premium-btn-primary" style="height: 32px; font-size: 0.78rem; padding: 0;" onclick="updateVehicleStatus('${veh.regNo}', 'Inspected')">Verify / Inspect</button>
+            <button class="premium-btn premium-btn-secondary" style="height: 32px; font-size: 0.78rem; padding: 0; color: var(--error-color); border-color: var(--error-color);" onclick="updateVehicleStatus('${veh.regNo}', 'Skipped')">Log Skip</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      container.appendChild(grid);
+    }
+
+    function updateVehicleStatus(regNo, status) {
+      const auctions = Api.getAuctions();
+      const auc = auctions.find(a => a.id === activeAuctionId);
+      if (!auc) return;
+
+      const lot = auc.lots[0];
+      if (!lot) return;
+
+      const veh = lot.vehicles.find(v => v.regNo === regNo);
+      if (veh) {
+        veh.inspectionStatus = status;
+        Api.saveAuctions(auctions);
+        Utils.showAlert(`Vehicle ${regNo} status logged as: ${status}`, 'success');
+        selectAuction(activeAuctionId);
+      }
+    }
+  </script>
+</body>
+
+</html>

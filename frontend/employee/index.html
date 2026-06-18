@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Portal — RVSF - LDR TRADERS</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <style>
+    /* ===== PORTAL SHELL ===== */
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background-color: var(--bg-color);
+    }
+
+    .emp-topbar {
+      height: 60px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--surface-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+
+    .emp-topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .emp-back-btn {
+      display: none;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border-color);
+      background: none;
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--text-secondary);
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-speed);
+      flex-shrink: 0;
+    }
+
+    .emp-back-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      background-color: var(--surface-variant);
+    }
+
+    .emp-back-btn.visible {
+      display: flex;
+    }
+
+    .emp-topbar-logo {
+      font-family: var(--font-title);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .emp-topbar-logo svg {
+      color: var(--primary-color);
+    }
+
+    #topbar-section-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .emp-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .emp-icon-btn {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border-color);
+      background: none;
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-speed);
+    }
+
+    .emp-icon-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      background-color: var(--surface-variant);
+    }
+
+    /* ===== MAIN CONTENT AREA ===== */
+    .emp-content {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    /* ===== HOME SCREEN ===== */
+    #screen-home {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 60px);
+      padding: 32px 20px;
+    }
+
+    .home-hero {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .home-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-color), #0369a1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      box-shadow: 0 0 0 4px var(--primary-container), 0 0 24px rgba(14, 165, 233, 0.2);
+    }
+
+    .home-avatar-initials {
+      font-family: var(--font-title);
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .home-greeting {
+      font-family: var(--font-title);
+      font-size: 1.35rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      letter-spacing: -0.3px;
+    }
+
+    .home-role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background-color: var(--primary-container);
+      color: var(--on-primary-container);
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    /* ===== ACTION CARDS GRID ===== */
+    .home-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    @media (min-width: 600px) {
+      .home-cards-grid {
+        gap: 18px;
+      }
+    }
+
+    .action-card {
+      position: relative;
+      border-radius: 18px;
+      padding: 24px 20px 20px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .action-card:active {
+      transform: scale(0.96);
+    }
+
+    /* Primary filled card */
+    .action-card.primary {
+      background: linear-gradient(135deg, var(--primary-color) 0%, #0369a1 100%);
+      border: 1px solid transparent;
+      box-shadow: 0 8px 24px rgba(14, 165, 233, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .action-card.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(14, 165, 233, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    /* Outlined secondary card */
+    .action-card.secondary {
+      background-color: var(--surface-color);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-elevation-1);
+    }
+
+    .action-card.secondary:hover {
+      border-color: var(--primary-color);
+      background-color: var(--surface-variant);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(14, 165, 233, 0.12);
+    }
+
+    /* Disabled locked card (no permission) */
+    .action-card.locked {
+      background-color: var(--surface-color);
+      border: 1px dashed var(--border-color);
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .action-card.locked:hover {
+      transform: none;
+    }
+
+    /* Wide card spanning both columns */
+    .action-card.wide {
+      grid-column: 1 / -1;
+      min-height: 100px;
+      flex-direction: row;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .card-label {
+      font-family: var(--font-title);
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      line-height: 1.2;
+    }
+
+    .action-card.primary .card-label {
+      color: #ffffff;
+    }
+
+    .action-card.secondary .card-label {
+      color: var(--text-primary);
+    }
+
+    .action-card.locked .card-label {
+      color: var(--text-secondary);
+    }
+
+    .card-sub {
+      font-size: 0.72rem;
+      font-weight: 400;
+      margin-top: 4px;
+      opacity: 0.75;
+      line-height: 1.4;
+    }
+
+    .action-card.primary .card-sub {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .action-card.secondary .card-sub {
+      color: var(--text-secondary);
+    }
+
+    .card-icon-wrap {
+      margin-top: auto;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .action-card.wide .card-icon-wrap {
+      margin-top: 0;
+      flex-shrink: 0;
+    }
+
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .action-card.primary .card-icon {
+      background-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .action-card.secondary .card-icon {
+      background-color: var(--primary-container);
+      color: var(--primary-color);
+    }
+
+    .action-card.locked .card-icon {
+      background-color: var(--surface-variant);
+      color: var(--text-disabled);
+    }
+
+    .card-lock-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-disabled);
+      background-color: var(--surface-variant);
+      padding: 3px 7px;
+      border-radius: 6px;
+    }
+
+    .action-card.wide .card-text {
+      flex: 1;
+    }
+
+    /* ===== SECTION SCREENS (hidden by default) ===== */
+    .emp-screen {
+      display: none;
+      padding: 20px;
+      max-width: 760px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (min-width: 900px) {
+      .emp-screen {
+        padding: 32px;
+      }
+    }
+
+    /* ===== ASSIGNMENT QUEUE HEADER ===== */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-header-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background-color: var(--primary-container);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary-color);
+      flex-shrink: 0;
+    }
+
+    .section-header h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      color: var(--primary-color);
+    }
+
+    .section-header p {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* ===== FORM STYLES ===== */
+    .rating-touch-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .rating-touch-btn {
+      height: 40px;
+      border: 1px solid var(--border-color);
+      background-color: var(--surface-variant);
+      color: var(--text-primary);
+      border-radius: var(--border-radius-md);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: grid;
+      place-content: center;
+      transition: all var(--transition-speed);
+    }
+
+    .rating-touch-btn.active {
+      background-color: var(--primary-container);
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+
+    .rating-touch-btn:hover:not(.active) {
+      border-color: var(--border-hover);
+      background-color: var(--surface-color);
+    }
+
+    /* Signature canvas */
+    .canvas-border {
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      background-color: var(--surface-variant);
+      width: 100%;
+      height: 160px;
+      touch-action: none;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    #sig-canvas {
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      display: block;
+    }
+
+    .canvas-clear-btn {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background-color: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-secondary);
+      font-size: 0.7rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+    }
+
+    .canvas-clear-btn:hover {
+      color: var(--text-primary);
+      background-color: rgba(0, 0, 0, 0.8);
+    }
+
+    /* Upload grids */
+    .media-upload-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    @media (min-width: 480px) {
+      .media-upload-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .form-grid-3 {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    @media (min-width: 600px) {
+      .form-grid-3 {
+        flex-direction: row;
+      }
+
+      .form-grid-3>.md-field-group,
+      .form-grid-3>.md-select-group {
+        flex: 1;
+        min-width: 0;
+      }
+    }
+
+    .file-upload-card {
+      border: 1px dashed var(--border-color);
+      border-radius: var(--border-radius-md);
+      padding: 14px 10px;
+      text-align: center;
+      background-color: var(--surface-variant);
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .file-upload-card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .file-upload-card.uploaded {
+      border-style: solid;
+      border-color: var(--success-color);
+      background-color: var(--success-bg);
+    }
+
+    .file-upload-card.uploaded svg {
+      color: var(--success-color);
+    }
+
+    /* Queue cards */
+    .queue-card {
+      background-color: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: all var(--transition-speed);
+    }
+
+    .queue-card:hover {
+      border-color: var(--border-hover);
+      background-color: var(--surface-variant);
+    }
+
+    .queue-card.selected {
+      border-color: var(--primary-color);
+      background-color: var(--primary-container);
+    }
+
+    /* History table */
+    .history-card {
+      background-color: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .history-card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .history-card-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-card-meta {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* ===== PAYMENT MODE PILLS ===== */
+    .pay-mode-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 24px;
+      border: 1.5px solid var(--border-color);
+      background: var(--surface-variant);
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+    }
+
+    .pay-mode-pill:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .pay-mode-pill.active {
+      background: var(--primary-container);
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="emp-topbar">
+    <div class="emp-topbar-left">
+      <button class="emp-back-btn" id="emp-back-btn" aria-label="Back to Home" onclick="navigateHome()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5" />
+          <path d="M12 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <div>
+        <div class="emp-topbar-logo" id="topbar-logo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+            <circle cx="7" cy="17" r="2" />
+            <path d="M9 17h6" />
+            <circle cx="17" cy="17" r="2" />
+          </svg>
+          RVSF - LDR<span style="color: var(--primary-color);">TRADERS</span>
+        </div>
+        <div id="topbar-section-title" style="display:none;"></div>
+      </div>
+    </div>
+    <div class="emp-topbar-actions">
+      <button class="theme-toggle-btn emp-icon-btn" aria-label="Toggle Theme"
+        style="border-color: var(--border-color);"></button>
+      <button class="emp-icon-btn" aria-label="Sign Out" onclick="Auth.logout()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="emp-content">
+
+    <!-- ======================================================== -->
+    <!-- HOME SCREEN — Action Hub                                  -->
+    <!-- ======================================================== -->
+    <div id="screen-home">
+
+      <!-- Greeting -->
+      <div class="home-hero">
+        <div class="home-avatar">
+          <span class="home-avatar-initials" id="home-initials">AL</span>
+        </div>
+        <h1 class="home-greeting" id="home-greeting">Good morning, Alok</h1>
+        <span class="home-role-badge" id="home-role-badge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="12" r="10" />
+          </svg>
+          L1 Agent
+        </span>
+      </div>
+
+      <!-- Action Cards Grid -->
+      <div class="home-cards-grid" id="home-cards-grid">
+        <!-- Cards are rendered dynamically by JS based on permissions -->
+      </div>
+
+    </div><!-- /screen-home -->
+
+
+    <!-- ======================================================== -->
+    <!-- SCREEN: L1 Valuation Agent                               -->
+    <!-- ======================================================== -->
+    <div class="emp-screen" id="screen-l1">
+
+      <!-- Main Valuation Form — shown directly -->
+      <form id="l1-valuation-form" onsubmit="handleL1Submit(event)">
+
+        <!-- 1. Owner & Lead Identification -->
+        <div class="premium-card" style="padding:20px; margin-bottom:20px;">
+          <h3 class="md-card-title" style="margin-bottom:16px;">1. Owner & Lead Identification</h3>
+          <div class="form-grid-2">
+            <div class="md-field-group">
+              <span class="input-label">Owner Full Name</span>
+              <input type="text" id="l1-owner-name" class="premium-input" style="height:44px;" required
+                placeholder="Owner name">
+            </div>
+            <div class="md-field-group">
+              <span class="input-label">Owner Phone Number</span>
+              <input type="tel" id="l1-owner-phone" class="premium-input" style="height:44px;" required
+                placeholder="e.g. 9876543210">
+            </div>
+          </div>
+          <div class="form-grid-2" style="margin-bottom:16px;">
+            <div class="md-field-group">
+              <span class="input-label">Owner Email</span>
+              <input type="email" id="l1-owner-email" class="premium-input" style="height:44px;"
+                placeholder="e.g. owner@email.com">
+            </div>
+            <div class="md-field-group">
+              <span class="input-label">Owner Address</span>
+              <input type="text" id="l1-owner-address" class="premium-input" style="height:44px;"
+                placeholder="Full address with pincode">
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Vehicle Specifications -->
+        <div class="premium-card" style="padding:20px; margin-bottom:20px;">
+          <h3 class="md-card-title" style="margin-bottom:16px;">2. Vehicle Specifications</h3>
+          <div class="form-grid-3">
+            <div class="md-field-group">
+              <span class="input-label">Make / Manufacturer</span>
+              <input type="text" id="l1-vehicle-make" class="premium-input" style="height:44px;" required
+                placeholder="e.g. Maruti Suzuki">
+            </div>
+            <div class="md-field-group">
+              <span class="input-label">Model Name</span>
+              <input type="text" id="l1-vehicle-model" class="premium-input" style="height:44px;" required
+                placeholder="e.g. Swift">
+            </div>
+            <div class="md-field-group">
+              <span class="input-label">Manufacturing Year</span>
+              <input type="number" id="l1-vehicle-year" class="premium-input" style="height:44px;" required
+                placeholder="e.g. 2012">
+            </div>
+          </div>
+          <div class="form-grid-3">
+            <div class="md-field-group">
+              <span class="input-label">Colour</span>
+              <input type="text" id="l1-vehicle-colour" class="premium-input" style="height:44px;" required
+                placeholder="e.g. Silver">
+            </div>
+            <div class="md-select-group">
+              <span class="input-label">Fuel Type</span>
+              <select id="l1-vehicle-fuel" class="premium-select" style="height:44px;" required>
+                <option value="">Select Fuel...</option>
+                <option value="Petrol">Petrol</option>
+                <option value="Diesel">Diesel</option>
+                <option value="CNG">CNG</option>
+                <option value="LPG">LPG</option>
+                <option value="Electric">Electric</option>
+                <option value="Hybrid">Hybrid</option>
+              </select>
+            </div>
+            <div class="md-field-group">
+              <span class="input-label">KMs Driven</span>
+              <input type="number" id="l1-vehicle-kms" class="premium-input" style="height:44px;" required
+                placeholder="e.g. 145000">
+            </div>
+          </div>
+          <div class="form-grid-3" style="margin-bottom:0;">
+            <div class="md-field-group">
+              <span class="input-label">Vehicle Registration Number</span>
+              <input type="text" id="l1-vehicle-reg-no" class="premium-input" style="height:44px;" required
+                placeholder="e.g. DL3CAQ9981">
+            </div>
+            <div class="md-field-group">
+              <span class="input-label">Engine Number</span>
+              <input type="text" id="l1-engine-no" class="premium-input" style="height:44px;"
+                placeholder="Enter engine number">
+            </div>
+            <div class="md-field-group">
+              <span class="input-label">Chassis Number</span>
+              <input type="text" id="l1-chassis-no" class="premium-input" style="height:44px;"
+                placeholder="Enter 17-digit chassis">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Condition Assessment & Accessories -->
+        <div class="premium-card" style="padding:20px; margin-bottom:20px;">
+          <h3 class="md-card-title" style="margin-bottom:16px;">3. Condition Assessment & Accessories</h3>
+
+          <span class="input-label" style="display:block; margin-bottom:12px;">Options present</span>
+          <div id="l1-options-tiles-select"
+            style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px 16px; margin-bottom:24px;"></div>
+
+          <span class="input-label" style="display:block; margin-bottom:8px;">Body Condition Rating (1–10)</span>
+          <div class="rating-touch-grid" id="l1-body-condition-grid"></div>
+          <p style="font-size:0.72rem; color:var(--text-secondary); margin-bottom:20px;" id="l1-body-rating-label">
+            Select Body score</p>
+
+          <span class="input-label" style="display:block; margin-bottom:8px;">Engine Condition Rating (1–10)</span>
+          <div class="rating-touch-grid" id="l1-engine-condition-grid"></div>
+          <p style="font-size:0.72rem; color:var(--text-secondary); margin-bottom:20px;" id="l1-engine-rating-label">
+            Select Engine score</p>
+
+          <span class="input-label" style="display:block; margin-bottom:8px;">Tyre Condition Rating (1–10)</span>
+          <div class="rating-touch-grid" id="l1-tyre-condition-grid"></div>
+          <p style="font-size:0.72rem; color:var(--text-secondary); margin-bottom:20px;" id="l1-tyre-rating-label">
+            Select Tyre score</p>
+
+          <div class="md-field-group" style="margin-bottom:0;">
+            <span class="input-label">Remark</span>
+            <textarea id="l1-accident" class="premium-input" style="height:80px; resize:none; padding:10px;"
+              placeholder=""></textarea>
+          </div>
+        </div>
+
+        <!-- 4. Pricing & Valuation Matrix -->
+        <div class="premium-card" style="padding:20px; margin-bottom:20px;">
+          <h3 class="md-card-title" style="margin-bottom:16px;">4. Pricing & Valuation Matrix</h3>
+          <div class="form-grid-2" style="margin-bottom:0;">
+            <div class="md-field-group">
+              <span class="input-label">Expected Price (₹)</span>
+              <input type="number" id="l1-expected-price" class="premium-input" style="height:44px;"
+                placeholder="Expected price">
+            </div>
+            <div class="md-field-group">
+              <span class="input-label">Recommended Price (₹)</span>
+              <input type="number" id="l1-recommended-price" class="premium-input" style="height:44px;"
+                placeholder="Recommended price">
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. KYC Documents Upload -->
+        <div class="premium-card" style="padding:20px; margin-bottom:20px;">
+          <h3 class="md-card-title" style="margin-bottom:12px;">5. KYC Documents</h3>
+          <!-- <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:16px;">Collect original identity
+            documents. Take photo copies and attach them below.</p> -->
+          <div class="media-upload-grid">
+            <div class="file-upload-card" id="card-rc-front" onclick="triggerMockUpload('rc-front')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-rc-front">RC Book (Front)</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-rc-front">Click to upload</span>
+            </div>
+            <div class="file-upload-card" id="card-rc-back" onclick="triggerMockUpload('rc-back')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-rc-back">RC Book (Back)</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-rc-back">Click to upload</span>
+            </div>
+            <div class="file-upload-card" id="card-aadhar" onclick="triggerMockUpload('aadhar')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-aadhar">Aadhar Card</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-aadhar">Click to upload</span>
+            </div>
+            <div class="file-upload-card" id="card-pan" onclick="triggerMockUpload('pan')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <rect x="3" y="4" width="18" height="16" rx="2" ry="2" />
+                <line x1="7" y1="8" x2="17" y2="8" />
+                <line x1="7" y1="12" x2="17" y2="12" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-pan">PAN Card</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-pan">Click to upload</span>
+            </div>
+            <div class="file-upload-card" id="card-insurance" onclick="triggerMockUpload('insurance')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-insurance">Insurance</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-insurance">Click to upload</span>
+            </div>
+            <div class="file-upload-card" id="card-noc" onclick="triggerMockUpload('noc')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-noc">NOC (if needed)</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-noc">Click to upload</span>
+            </div>
+            <div class="file-upload-card" id="card-form35" onclick="triggerMockUpload('form35')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-form35">Form 35 (if HP)</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-form35">Click to upload</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Media Upload -->
+        <div class="premium-card" style="padding:20px; margin-bottom:20px;">
+          <h3 class="md-card-title" style="margin-bottom:12px;">6. Media Uploads</h3>
+          <!-- <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:16px;">Capture exterior, interior,
+            engine bay, odometer, damage spots, and walkaround video.</p> -->
+          <div class="media-upload-grid">
+            <div class="file-upload-card" id="card-ext-front" onclick="triggerMockMediaUpload('ext-front')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-ext-front">Exterior Front</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-ext-front">Click to snap</span>
+            </div>
+            <div class="file-upload-card" id="card-ext-rear" onclick="triggerMockMediaUpload('ext-rear')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-ext-rear">Exterior Rear</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-ext-rear">Click to snap</span>
+            </div>
+            <div class="file-upload-card" id="card-ext-left" onclick="triggerMockMediaUpload('ext-left')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-ext-left">Exterior Left</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-ext-left">Click to snap</span>
+            </div>
+            <div class="file-upload-card" id="card-ext-right" onclick="triggerMockMediaUpload('ext-right')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-ext-right">Exterior Right</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-ext-right">Click to snap</span>
+            </div>
+            <div class="file-upload-card" id="card-interior" onclick="triggerMockMediaUpload('interior')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-interior">Interior View</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-interior">Click to snap</span>
+            </div>
+            <div class="file-upload-card" id="card-engine" onclick="triggerMockMediaUpload('engine')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-engine">Engine Bay</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-engine">Click to snap</span>
+            </div>
+            <div class="file-upload-card" id="card-odometer" onclick="triggerMockMediaUpload('odometer')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-odometer">Odometer</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-odometer">Click to snap</span>
+            </div>
+            <div class="file-upload-card" id="card-damage" onclick="triggerMockMediaUpload('damage')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-damage">Damage Spots</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-damage">Click to snap</span>
+            </div>
+            <div class="file-upload-card" id="card-video" onclick="triggerMockMediaUpload('video')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <polygon points="23 7 16 12 23 17 23 7" />
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+              </svg>
+              <span style="display:block; font-size:0.7rem; font-weight:600;" id="label-video">Walkaround Video</span>
+              <span style="font-size:0.6rem; color:var(--text-secondary);" id="status-video">Click to record</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. Payment Mode -->
+        <div class="premium-card" style="padding:20px; margin-bottom:20px;">
+          <h3 class="md-card-title" style="margin-bottom:6px;">7. Payment Mode</h3>
+          <!-- <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:16px;">Select how the seller will
+            receive payment.</p> -->
+
+          <!-- Mode toggle pills -->
+          <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+            <button type="button" id="pay-mode-upi" class="pay-mode-pill" onclick="selectPayMode('upi')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <path d="M2 10h20" />
+              </svg>
+              UPI
+            </button>
+            <button type="button" id="pay-mode-cash" class="pay-mode-pill" onclick="selectPayMode('cash')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+              Cash
+            </button>
+            <button type="button" id="pay-mode-bank" class="pay-mode-pill" onclick="selectPayMode('bank')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              Bank Transfer
+            </button>
+          </div>
+
+          <!-- UPI fields -->
+          <div id="pay-fields-upi" style="display:none;">
+            <div class="md-field-group" style="margin-bottom:0;">
+              <span class="input-label">UPI ID</span>
+              <input type="text" id="l1-upi-id" class="premium-input" style="height:44px;"
+                placeholder="e.g. seller@upi or 9876543210@paytm">
+            </div>
+          </div>
+
+          <!-- Cash fields -->
+          <div id="pay-fields-cash" style="display:none;">
+            <label
+              style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:14px 16px; border-radius:var(--border-radius-md); border:1px solid var(--border-color); background:var(--surface-variant);">
+              <input type="checkbox" id="l1-cash-confirm"
+                style="width:18px; height:18px; accent-color:var(--primary-color);">
+              <span style="font-size:0.85rem; color:var(--text-primary);">I confirm the seller will receive cash payment
+                in hand</span>
+            </label>
+          </div>
+
+          <!-- Bank Transfer fields -->
+          <div id="pay-fields-bank" style="display:none;">
+            <div class="form-grid-2" style="margin-bottom:16px;">
+              <div class="md-field-group">
+                <span class="input-label">Account Holder Name</span>
+                <input type="text" id="l1-bank-holder" class="premium-input" style="height:44px;"
+                  placeholder="As per bank records">
+              </div>
+              <div class="md-field-group">
+                <span class="input-label">Bank Name</span>
+                <input type="text" id="l1-bank-name" class="premium-input" style="height:44px;"
+                  placeholder="e.g. HDFC Bank">
+              </div>
+            </div>
+            <div class="form-grid-2" style="margin-bottom:0;">
+              <div class="md-field-group">
+                <span class="input-label">Account Number</span>
+                <input type="text" id="l1-bank-account" class="premium-input" style="height:44px;"
+                  placeholder="Enter account number">
+              </div>
+              <div class="md-field-group">
+                <span class="input-label">IFSC Code</span>
+                <input type="text" id="l1-bank-ifsc" class="premium-input" style="height:44px; text-transform:uppercase;"
+                  placeholder="e.g. HDFC0001234">
+              </div>
+            </div>
+          </div>
+
+          <!-- No mode selected hint -->
+          <div id="pay-fields-none"
+            style="text-align:center; padding:16px 0; color:var(--text-secondary); font-size:0.8rem;">
+            Select a payment mode above
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex; flex-direction:column-reverse; gap:12px; margin-top:8px; padding-bottom:32px;">
+          <button type="button" class="premium-btn premium-btn-secondary" style="width:100%;"
+            onclick="handleL1DraftSave()">Save Draft Locally</button>
+          <button type="submit" class="premium-btn premium-btn-primary" style="width:100%;">Submit for L2
+            Approval</button>
+        </div>
+
+      </form>
+    </div><!-- /screen-l1 -->
+
+
+    <!-- ======================================================== -->
+    <!-- SCREEN: L4 Picker                                        -->
+    <!-- ======================================================== -->
+    <div class="emp-screen" id="screen-picker">
+
+      <div class="section-header">
+        <div class="section-header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+        </div>
+        <div>
+          <h2>Pickup Collections</h2>
+          <p>Your active vehicle collection assignments</p>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="picker-queue-empty" class="premium-card"
+        style="padding:48px 24px; text-align:center; color:var(--text-secondary);">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+          style="margin-bottom:12px;">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <path d="M16 2v4" />
+          <path d="M8 2v4" />
+          <path d="M3 10h18" />
+        </svg>
+        <p style="font-size:0.9rem;">No scheduled collection jobs assigned right now.</p>
+      </div>
+
+      <!-- Queue list -->
+      <div id="picker-queue-list" style="display:none;">
+        <div id="picker-queue"></div>
+
+        <!-- Detail card -->
+        <div class="premium-card" id="picker-detail-card" style="display:none; padding:20px; margin-top:16px;">
+          <div
+            style="border-bottom:1px solid var(--border-color); padding-bottom:14px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <h3 id="pick-car-model" style="font-size:1.15rem; font-weight:700; color:var(--primary-color);">Suzuki
+                Swift</h3>
+              <span id="pick-reg-no" class="premium-badge md-badge-approved"
+                style="font-family:monospace; font-size:0.8rem; margin-top:4px;">DL3C1234</span>
+            </div>
+            <button class="premium-btn premium-btn-secondary"
+              style="height:32px; border-radius:var(--border-radius-sm); padding:0 12px; font-size:0.75rem;"
+              onclick="triggerCallShort()">Call Seller</button>
+          </div>
+          <div style="margin-bottom:16px; font-size:0.85rem; line-height:1.6;">
+            <p><strong>Seller:</strong> <span id="pick-owner-name">Rajesh Khanna</span></p>
+            <p><strong>Mobile:</strong> <a id="pick-owner-phone-link" href="tel:">9876543210</a></p>
+          </div>
+          <a id="pick-maps-btn" target="_blank" class="premium-btn premium-btn-secondary"
+            style="width:100%; height:38px; font-size:0.8rem; border-radius:var(--border-radius-md); margin-bottom:20px; display:flex; align-items:center; justify-content:center; gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            Open Google Maps Navigation
+          </a>
+          <div style="margin-bottom:20px;">
+            <span class="input-label" style="display:block; margin-bottom:6px;">Pickup Proof Photo</span>
+            <div class="file-upload-card" id="card-pickup-proof" onclick="triggerMockUpload('pickup-proof')"
+              style="padding:20px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                stroke-width="1.8" style="margin-bottom:4px;">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span style="display:block; font-size:0.75rem; font-weight:600;" id="label-pickup-proof">Take Delivery
+                Proof Photo</span>
+              <span style="font-size:0.65rem; color:var(--text-secondary);" id="status-pickup-proof">Click to snap
+                photo</span>
+            </div>
+          </div>
+          <div style="margin-bottom:24px;">
+            <span class="input-label" style="display:block; margin-bottom:6px;">Seller Digital Signature</span>
+            <div class="canvas-border">
+              <canvas id="sig-canvas"></canvas>
+              <button type="button" class="canvas-clear-btn" onclick="clearSigCanvas()">Clear signature</button>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-secondary);">Draw seller's handover signature using finger or
+              stylus.</p>
+          </div>
+          <button class="premium-btn premium-btn-primary" style="width:100%;" onclick="handleConfirmCollection()">Verify
+            Handover & Complete Pickup</button>
+        </div>
+      </div>
+
+    </div><!-- /screen-picker -->
+
+
+    <!-- ======================================================== -->
+    <!-- SCREEN: L4 Scrapper                                      -->
+    <!-- ======================================================== -->
+    <div class="emp-screen" id="screen-scrapper">
+
+      <div class="section-header">
+        <div class="section-header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 12H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+          </svg>
+        </div>
+        <div>
+          <h2>Scrap Yard Operations</h2>
+          <p>Dismantle, log dry metal weight, and salvage parts from picked up vehicles</p>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="scrapper-queue-empty" class="premium-card"
+        style="padding:48px 24px; text-align:center; color:var(--text-secondary); display:none;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+          style="margin-bottom:12px;">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M9 17v-5" />
+          <path d="M12 17V9" />
+          <path d="M15 17v-3" />
+        </svg>
+        <p style="font-size:0.9rem;">No vehicles currently waiting in the scrapping bay.</p>
+      </div>
+
+      <!-- Workspace layout -->
+      <div id="scrapper-workspace-split" style="display:grid; grid-template-columns:1fr; gap:16px;">
+        <div id="scrapper-queue"></div>
+
+        <!-- Detail card -->
+        <div class="premium-card" id="scrapper-detail-card" style="display:none; padding:20px; margin-top:16px;">
+          <div style="border-bottom:1px solid var(--border-color); padding-bottom:14px; margin-bottom:16px;">
+            <h3 id="scrap-car-model" style="font-size:1.15rem; font-weight:700; color:var(--primary-color);">Vehicle Model</h3>
+            <span id="scrap-reg-no" class="premium-badge md-badge-approved"
+              style="font-family:monospace; font-size:0.8rem; margin-top:4px;">REG_NO</span>
+          </div>
+
+          <div style="margin-bottom:20px; font-size:0.85rem; line-height:1.6; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div><strong>Engine No:</strong> <span id="scrap-engine-val">ENG-MOCK</span></div>
+            <div><strong>Chassis No:</strong> <span id="scrap-chassis-val">CHA-MOCK</span></div>
+            <div style="grid-column: span 2;"><strong>Accident Remarks:</strong> <span id="scrap-accident-val">None</span></div>
+          </div>
+
+          <!-- Intact accessories checklist -->
+          <div style="margin-bottom:20px;">
+            <span class="input-label" style="display:block; margin-bottom:10px;">Select Salvaged Parts (to recover)</span>
+            <div id="scrap-accessories-pills" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+
+          <!-- Weights and Values -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px;">
+            <div class="md-field-group">
+              <span class="input-label">Dry Metal Weight (kg)</span>
+              <input type="number" id="scrap-metal-weight" class="premium-input" style="height:44px;" required placeholder="e.g. 950">
+            </div>
+            <div class="md-field-group">
+              <span class="input-label">Realized Scrap Value (₹)</span>
+              <input type="number" id="scrap-value-realized" class="premium-input" style="height:44px;" required placeholder="e.g. 18000">
+            </div>
+          </div>
+
+          <button class="premium-btn premium-btn-primary" style="width:100%;" onclick="handleCompleteScrapping()">Complete Scrapping & Close Lot</button>
+        </div>
+      </div>
+
+    </div><!-- /screen-scrapper -->
+
+
+    <!-- ======================================================== -->
+    <!-- SCREEN: Purchase History                                  -->
+    <!-- ======================================================== -->
+    <div class="emp-screen" id="screen-history">
+
+      <div class="section-header">
+        <div class="section-header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3h2l.4 2M7 13h10l4-8H5.4" />
+            <path d="M7 13L5.4 5" />
+            <circle cx="9" cy="21" r="1" />
+            <circle cx="20" cy="21" r="1" />
+          </svg>
+        </div>
+        <div>
+          <h2>Purchase History</h2>
+          <p>Vehicles you've submitted and their current status</p>
+        </div>
+      </div>
+
+      <div id="history-list">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div id="history-empty" class="premium-card"
+        style="padding:48px 24px; text-align:center; color:var(--text-secondary); display:none;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+          style="margin-bottom:12px;">
+          <path d="M3 3h2l.4 2M7 13h10l4-8H5.4" />
+          <path d="M7 13L5.4 5" />
+          <circle cx="9" cy="21" r="1" />
+          <circle cx="20" cy="21" r="1" />
+        </svg>
+        <p style="font-size:0.9rem;">No vehicle submissions found in your history yet.</p>
+      </div>
+
+    </div><!-- /screen-history -->
+
+  </div><!-- /emp-content -->
+
+  <!-- Scripts -->
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="employee.js"></script>
+</body>
+
+</html>

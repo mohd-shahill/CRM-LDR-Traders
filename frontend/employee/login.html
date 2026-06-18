@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Login — RVSF - LDR TRADERS</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 0 16px;
+    }
+  </style>
+</head>
+<body class="landing-page">
+
+  <!-- Main Decoupled Card -->
+  <main class="login-split-card">
+    
+    <!-- Left Visual Panel (Visible on Desktop) -->
+    <div class="login-visual-panel">
+      <div>
+        <div class="landing-logo" style="cursor: default; font-size: 1.5rem; margin-bottom: 32px;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
+            <circle cx="7" cy="17" r="2"/>
+            <path d="M9 17h6"/>
+            <circle cx="17" cy="17" r="2"/>
+          </svg>
+          RVSF - LDR<span>EMPLOYEES</span>
+        </div>
+        
+        <h2 class="login-visual-title">Field Operations Portal</h2>
+        <p class="login-visual-desc">
+          Sign in to access your assigned tasks. Log physical vehicle diagnostics, map pickup coordinates, collect digital signatures, and log scrapper yard records.
+        </p>
+      </div>
+
+      <div class="login-visual-banner">
+        <strong>Roles Included:</strong><br>
+        L1 Agents (Lead Creators), L4 Pickers (Vehicle Transport), and L4 Scrappers (Recycling Logging).
+      </div>
+    </div>
+
+    <!-- Right Form Panel -->
+    <div class="login-form-panel">
+      <div style="margin-bottom: 24px;">
+        <h3 style="font-family: var(--font-title); font-size: 1.4rem; font-weight: 600; margin-bottom: 6px;">Staff Sign In</h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem;">
+          Provide your employee coordinates to access your active dashboards.
+        </p>
+      </div>
+
+      <!-- Error Alerts -->
+      <div class="md-alert md-alert-error" id="login-alert" style="display: none; padding: 10px 12px; margin-bottom: 16px; font-size: 0.8rem;">
+        <!-- Error text -->
+      </div>
+
+      <form id="employee-login-form" onsubmit="handleEmployeeLogin(event)">
+        <!-- Email Address -->
+        <div class="input-wrapper">
+          <span class="input-label">Employee Email</span>
+          <input type="email" id="login-email" class="premium-input" required placeholder="e.g. alok@ldr.com">
+        </div>
+
+        <!-- Password -->
+        <div class="input-wrapper" style="margin-bottom: 24px;">
+          <span class="input-label">Password</span>
+          <input type="password" id="login-password" class="premium-input" required placeholder="••••••••">
+        </div>
+
+        <button type="submit" class="premium-btn premium-btn-primary" style="width: 100%;">Sign In to Workspace</button>
+      </form>
+
+      <!-- Quick demo accounts -->
+      <div class="quick-login-grid" id="quick-demo-logins">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+
+  </main>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Force dark theme as modern default
+      if (!localStorage.getItem('theme')) {
+        localStorage.setItem('theme', 'dark');
+      }
+      Utils.initTheme();
+
+      // Redirect if already logged in
+      const activeUser = Auth.getCurrentUser();
+      if (activeUser && (Auth.hasPermission('l1') || Auth.hasPermission('l4_picker') || Auth.hasPermission('l4_scrapper') || activeUser.is_super_admin)) {
+        window.location.replace('index.html');
+        return;
+      }
+      
+      // Load demo accounts relevant only to Employees (L1 and L4)
+      const container = document.getElementById('quick-demo-logins');
+      container.innerHTML = `<span style="grid-column: span 2; font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Quick Employee Logins:</span>`;
+      
+      const users = Api.getUsers();
+      const employeeUsers = users.filter(u => u.permissions.includes('l1') || u.permissions.includes('l4_picker') || u.permissions.includes('l4_scrapper'));
+      employeeUsers.forEach(u => {
+        let label = 'L1 Agent';
+        if (u.permissions.includes('l1') && u.permissions.includes('l4_picker')) label = 'Agent + Picker';
+        else if (u.permissions.includes('l4_picker')) label = 'L4 Picker';
+        else if (u.permissions.includes('l4_scrapper')) label = 'L4 Scrapper';
+
+        const tag = document.createElement('div');
+        tag.className = 'demo-tag';
+        tag.innerText = `${u.name} (${label})`;
+        tag.onclick = () => {
+          document.getElementById('login-email').value = u.email;
+          document.getElementById('login-password').value = u.password || 'password';
+        };
+        container.appendChild(tag);
+      });
+    });
+
+    async function handleEmployeeLogin(event) {
+      event.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const alertEl = document.getElementById('login-alert');
+
+      try {
+        const user = await Auth.login(email, password);
+        
+        // Ensure user has employee rights
+        const hasAccess = Auth.hasPermission('l1') || Auth.hasPermission('l4_picker') || Auth.hasPermission('l4_scrapper');
+        if (!hasAccess) {
+          throw new Error('Access Denied: Logins are restricted to L1 / L4 field employees.');
+        }
+
+        Utils.showAlert('Authentication successful. Loading workspace...', 'success');
+        setTimeout(() => {
+          window.location.replace('index.html');
+        }, 800);
+
+      } catch (err) {
+        alertEl.innerText = err.message;
+        alertEl.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
