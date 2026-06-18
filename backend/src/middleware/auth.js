@@ -2,7 +2,9 @@ import jwt from 'jsonwebtoken';
 import db from '../config/db.js';
 
 export const authenticateToken = async (req, res, next) => {
-  const token = req.cookies.rvsf_token;
+  const portal = req.headers['x-portal'] || 'employee';
+  const cookieName = `rvsf_${portal}_token`;
+  const token = req.cookies[cookieName];
 
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
@@ -29,7 +31,7 @@ export const authenticateToken = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    res.clearCookie('rvsf_token');
+    res.clearCookie(cookieName);
     return res.status(401).json({ error: 'Session expired or invalid.' });
   }
 };

@@ -1,5 +1,4 @@
 import db from '../config/db.js';
-import { getNextL1Agent } from '../services/assignment.js';
 import { logAction, addNotification } from '../services/logging.js';
 
 export const getLeads = async (req, res) => {
@@ -110,11 +109,9 @@ export const createLead = async (req, res) => {
       return res.status(400).json({ error: `Vehicle ${normalizedReg} is already registered.` });
     }
 
-    // Determine round-robin assignment
-    const assignedAgentId = await getNextL1Agent();
-
     const id = 'lead-' + Math.floor(100000 + Math.random() * 900000);
-    const status = assignedAgentId ? 'assigned' : 'new';
+    const status = 'new';
+    const assignedAgentId = null;
 
     const insertResult = await db.query(
       `INSERT INTO leads (
@@ -150,18 +147,10 @@ export const createLead = async (req, res) => {
     // Log action & notify
     await logAction(req.user?.id || 'system', 'LEAD_CREATED', 'leads', id, null, newLead);
 
-    if (assignedAgentId) {
-      await addNotification(
-        assignedAgentId,
-        id,
-        `New vehicle lead ${normalizedReg} has been assigned to you!`
-      );
-    } else {
-      // Notify all L1 agents
-      const agents = await db.query("SELECT id FROM users WHERE 'l1' = ANY(permissions) AND is_active = TRUE");
-      for (const agent of agents.rows) {
-        await addNotification(agent.id, id, `New unassigned vehicle lead ${normalizedReg} is available.`);
-      }
+    // Notify all L1 agents
+    const agents = await db.query("SELECT id FROM users WHERE 'l1' = ANY(permissions) AND is_active = TRUE");
+    for (const agent of agents.rows) {
+      await addNotification(agent.id, id, `New unassigned vehicle lead ${normalizedReg} is available.`);
     }
 
     return res.status(201).json({ message: 'Lead created successfully.', lead: newLead });
@@ -215,12 +204,63 @@ export const updateL1Details = async (req, res) => {
 
     const previousLead = leadResult.rows[0];
 
+    // Extract root-level fields if provided in l1Details, otherwise keep existing values
+    const ownerName = l1Details.ownerName || previousLead.owner_name;
+    const phone = l1Details.ownerPhone || previousLead.phone;
+    const email = l1Details.ownerEmail || previousLead.email;
+    const address = l1Details.ownerAddress || previousLead.address;
+    const vehicleNumber = l1Details.vehicleRegNumber ? l1Details.vehicleRegNumber.replace(/\s+/g, '').toUpperCase() : previousLead.vehicle_number;
+    const make = l1Details.make || previousLead.make;
+    const model = l1Details.model || previousLead.model;
+    const year = l1Details.year ? parseInt(l1Details.year) : previousLead.year;
+    const colour = l1Details.colour || previousLead.colour;
+    const fuelType = l1Details.fuelType || previousLead.fuel_type;
+    const kmsDriven = l1Details.kmsDriven !== undefined ? parseInt(l1Details.kmsDriven) : previousLead.kms_driven;
+    const bodyCondition = l1Details.bodyCondition !== undefined ? parseInt(l1Details.bodyCondition) : previousLead.body_condition;
+    const expectedPrice = l1Details.expectedPrice !== undefined ? parseInt(l1Details.expectedPrice) : previousLead.expected_price;
+    const submittedBy = req.user?.id || previousLead.submitted_by;
+
+    // Convert missingParts from checkboxes to optionsPresent array for database format compat
+    const accessoriesList = [
+      "Battery",
+      "AC",
+      "Music System",
+      "Airbags",
+      "Sunroof",
+      "Spare Tyre",
+      "Jack & Tools",
+      "Central Locking",
+    ];
+    const missing = l1Details.missingParts || [];
+    const optionsPresent = accessoriesList.filter(x => !missing.includes(x));
+
     const updatedResult = await db.query(
       `UPDATE leads 
-       SET l1_details = $1, status = 'pending_approval'
-       WHERE id = $2
+       SET l1_details = $1, status = 'pending_approval',
+           owner_name = $2, phone = $3, email = $4, address = $5, vehicle_number = $6,
+           make = $7, model = $8, year = $9, colour = $10, fuel_type = $11, kms_driven = $12,
+           body_condition = $13, expected_price = $14, options_present = $15, submitted_by = $16
+       WHERE id = $17
        RETURNING *`,
-      [JSON.stringify(l1Details), id]
+      [
+        JSON.stringify(l1Details),
+        ownerName,
+        phone,
+        email,
+        address,
+        vehicleNumber,
+        make,
+        model,
+        year,
+        colour,
+        fuelType,
+        kmsDriven,
+        bodyCondition,
+        expectedPrice,
+        optionsPresent,
+        submittedBy,
+        id
+      ]
     );
 
     const updatedLead = updatedResult.rows[0];

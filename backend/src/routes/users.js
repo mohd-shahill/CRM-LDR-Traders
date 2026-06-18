@@ -1,15 +1,15 @@
 import express from 'express';
 import { getUsers, createUser, updateUser } from '../controllers/users.js';
 import { authenticateToken, requirePermission } from '../middleware/auth.js';
-
 const router = express.Router();
 
-// Only Super Admins can manage staff members
 router.use(authenticateToken);
-router.use(requirePermission('super_admin'));
 
+// All authenticated staff can view the directory list of users
 router.get('/', getUsers);
-router.post('/', createUser);
-router.put('/:id', updateUser);
+
+// Only Super Admins can enroll or modify staff members
+router.post('/', requirePermission('super_admin'), createUser);
+router.put('/:id', requirePermission('super_admin'), updateUser);
 
 export default router;

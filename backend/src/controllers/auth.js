@@ -53,7 +53,8 @@ export const login = async (req, res) => {
     );
 
     // Set cookie options
-    res.cookie('rvsf_token', token, {
+    const activePortal = portal || 'employee';
+    res.cookie(`rvsf_${activePortal}_token`, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -69,7 +70,8 @@ export const login = async (req, res) => {
 };
 
 export const logout = (req, res) => {
-  res.clearCookie('rvsf_token');
+  const portal = req.headers['x-portal'] || 'employee';
+  res.clearCookie(`rvsf_${portal}_token`);
   return res.json({ message: 'Logged out successfully' });
 };
 
