@@ -70,6 +70,8 @@ function mapLeadToCamelCase(lead) {
     l2Details: lead.l2_details !== undefined ? lead.l2_details : lead.l2Details,
     l3Details: l3Details,
     l4Details: l4Details,
+    assignedPicker: l4Details.assignedPicker !== undefined ? l4Details.assignedPicker : (lead.assigned_picker || lead.assignedPicker),
+    scheduledDate: l4Details.scheduledDate !== undefined ? l4Details.scheduledDate : (lead.scheduled_date || lead.scheduledDate),
     paymentDetails: l3Details.paymentDetails || lead.paymentDetails,
     pickupDetails: l4Details.pickupDetails || lead.pickupDetails,
     scrapDetails: l4Details.scrapDetails || lead.scrapDetails,
@@ -151,6 +153,7 @@ const Api = {
         }
       } catch (err) {
         console.error('Error saving user:', err);
+        throw err;
       }
     }
     this.users = [...users];
@@ -163,11 +166,13 @@ const Api = {
 
   async saveLeads(leads) {
     for (const l of leads) {
-      // Merge pickupDetails and scrapDetails into l4Details to save in the DB
+      // Merge pickupDetails, scrapDetails, assignedPicker, and scheduledDate into l4Details to save in the DB
       l.l4Details = {
         ...(l.l4Details || {}),
         pickupDetails: l.pickupDetails || (l.l4Details && l.l4Details.pickupDetails),
         scrapDetails: l.scrapDetails || (l.l4Details && l.l4Details.scrapDetails),
+        assignedPicker: l.assignedPicker !== undefined ? l.assignedPicker : (l.l4Details && l.l4Details.assignedPicker),
+        scheduledDate: l.scheduledDate !== undefined ? l.scheduledDate : (l.l4Details && l.l4Details.scheduledDate),
       };
 
       const cached = (this.pristineLeads || []).find(c => c.id === l.id);
@@ -186,6 +191,7 @@ const Api = {
           const l3Changed = JSON.stringify(cached.l3Details || {}) !== JSON.stringify(l.l3Details || {});
           const l4Changed = JSON.stringify(cached.l4Details || {}) !== JSON.stringify(l.l4Details || {});
           const assignedChanged = cached.assignedTo !== l.assignedTo;
+          const pickerChanged = cached.assignedPicker !== l.assignedPicker || cached.scheduledDate !== l.scheduledDate;
 
           if (l1Changed) {
             await apiFetch(`/leads/${l.id}/l1`, {
@@ -202,7 +208,7 @@ const Api = {
               method: 'PUT',
               body: JSON.stringify({ l3Details: l.l3Details, status: l.status }),
             });
-          } else if (l4Changed) {
+          } else if (l4Changed || pickerChanged) {
             await apiFetch(`/leads/${l.id}/l4`, {
               method: 'PUT',
               body: JSON.stringify({ l4Details: l.l4Details, status: l.status }),
@@ -222,6 +228,7 @@ const Api = {
         }
       } catch (err) {
         console.error('Error saving lead:', err);
+        throw err;
       }
     }
     this.leads = [...leads];
@@ -230,6 +237,17 @@ const Api = {
 
   getLeadById(id) {
     return this.leads.find((l) => l.id === id);
+  },
+
+  async fetchLeadDetailsFromServer(id) {
+    const rawLead = await apiFetch(`/leads/${id}`);
+    const mapped = mapLeadToCamelCase(rawLead);
+    // Update local cache
+    const idx = this.leads.findIndex((l) => l.id === id);
+    if (idx !== -1) {
+      this.leads[idx] = mapped;
+    }
+    return mapped;
   },
 
   async createSellerLead(leadData) {

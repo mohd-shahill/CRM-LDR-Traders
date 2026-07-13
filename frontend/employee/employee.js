@@ -91,45 +91,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     navigateTo(initialScreen, false);
   }
 
-  // Poll for database / local storage changes every 5 seconds
-  setInterval(async () => {
-    await Api.syncAll();
-    loadNotificationsCount();
-    
-    // If the active screen is L1-Leads, Picker, or Scrapper, refresh the lists
-    if (activeScreen === "l1-leads") {
-      const queue = document.getElementById("l1-queue");
-      if (queue) {
-        const currentUser = Auth.getCurrentUser();
-        const leads = Api.getLeads().filter(
-          (l) => l.status === "assigned" && l.assignedTo === currentUser.id
-        );
-        queue.innerHTML = "";
-        if (leads.length === 0) {
-          queue.innerHTML = '<div style="text-align:center; padding:16px; color:var(--text-secondary); font-size:0.85rem; border: 1px dashed var(--border-color); border-radius: 8px;">No assigned leads pending valuation.</div>';
-        } else {
-          leads.forEach((l) => {
-            const card = document.createElement("div");
-            card.className = `queue-card ${selectedL1LeadId === l.id ? "selected" : ""}`;
-            card.setAttribute("data-id", l.id);
-            card.onclick = () => selectL1Lead(l.id);
-            card.innerHTML = `
-              <div>
-                <strong style="display:block;">${l.make || "Unknown"} ${l.model || ""}</strong>
-                <span style="font-size:0.75rem; font-family:monospace; color:var(--text-secondary);">${l.vehicleNumber}</span>
-              </div>
-              <span class="premium-badge md-badge-pending">Assigned</span>
-            `;
-            queue.appendChild(card);
-          });
-        }
-      }
-    } else if (activeScreen === "picker") {
-      initPickerQueue();
-    } else if (activeScreen === "scrapper") {
-      initScrapQueue();
-    }
-  }, 5000);
+  // Polling disabled: replaced by real-time event-driven updates in socket-client.js
 });
 
 function getStaffDescription(user) {
@@ -348,6 +310,37 @@ function navigateTo(screen, updateHash = true) {
 }
 
 function navigateHome(updateHash = true) {
+  // If we are currently viewing a lead's details inside L1 leads, go back to the queue list first
+  if (activeScreen === "l1-leads" && selectedL1LeadId !== null) {
+    selectedL1LeadId = null;
+    const queueContainer = document.getElementById("l1-queue-container");
+    if (queueContainer) queueContainer.style.display = "block";
+    document.getElementById("l1-valuation-form").style.display = "none";
+    document.getElementById("l1-form-empty").style.display = "block";
+    initL1Queue();
+    return;
+  }
+  
+  // If we are currently viewing details inside Picker leads, go back to the list first
+  if (activeScreen === "picker" && selectedPickerLeadId !== null) {
+    selectedPickerLeadId = null;
+    const queue = document.getElementById("picker-queue");
+    if (queue) queue.style.display = "block";
+    document.getElementById("picker-detail-card").style.display = "none";
+    initPickerQueue();
+    return;
+  }
+
+  // If we are currently viewing details inside Scrapper leads, go back to the list first
+  if (activeScreen === "scrapper" && selectedScrapLeadId !== null) {
+    selectedScrapLeadId = null;
+    const queue = document.getElementById("scrapper-queue");
+    if (queue) queue.style.display = "block";
+    document.getElementById("scrapper-detail-card").style.display = "none";
+    initScrapQueue();
+    return;
+  }
+
   activeScreen = "home";
 
   document
@@ -494,6 +487,10 @@ function selectL1Lead(leadId) {
       c.classList.remove("selected");
     }
   });
+
+  // Hide the queue container to open form in the "next page" view
+  const queueContainer = document.getElementById("l1-queue-container");
+  if (queueContainer) queueContainer.style.display = "none";
 
   loadL1LeadForm(leadId);
 }
@@ -1197,40 +1194,47 @@ async function handleL1Submit(event) {
     leads.push(lead);
   }
 
-  await Api.saveLeads(leads);
+  try {
+    await Api.saveLeads(leads);
 
-  // Remove any saved draft for this vehicle number
-  const drafts = JSON.parse(localStorage.getItem("ldr_l1_drafts") || "{}");
-  delete drafts[valuation.vehicleRegNumber];
-  localStorage.setItem("ldr_l1_drafts", JSON.stringify(drafts));
+    // Remove any saved draft for this vehicle number
+    const drafts = JSON.parse(localStorage.getItem("ldr_l1_drafts") || "{}");
+    delete drafts[valuation.vehicleRegNumber];
+    localStorage.setItem("ldr_l1_drafts", JSON.stringify(drafts));
 
-  // Notify L2 purchase managers
-  await Api.logAction(
-    user.id,
-    "VALUATION_SUBMITTED",
-    "leads",
-    leadId,
-    "assigned",
-    "Vehicle valuation completed by L1 agent",
-  );
-  
-  const managers = Api.getUsers().filter((u) => u.permissions.includes("l2"));
-  managers.forEach((m) => {
-    Api.addNotification(
-      m.id,
+    // Notify L2 purchase managers
+    await Api.logAction(
+      user.id,
+      "VALUATION_SUBMITTED",
+      "leads",
       leadId,
-      `New valuation submitted for ${valuation.vehicleRegNumber} — ${valuation.make} ${valuation.model}. Awaiting L2 review.`,
+      "assigned",
+      "Vehicle valuation completed by L1 agent",
     );
-  });
+    
+    const managers = Api.getUsers().filter((u) => u.permissions.includes("l2"));
+    managers.forEach((m) => {
+      Api.addNotification(
+        m.id,
+        leadId,
+        `New valuation submitted for ${valuation.vehicleRegNumber} — ${valuation.make} ${valuation.model}. Awaiting L2 review.`,
+      );
+    });
 
-  Utils.showAlert(
-    `Vehicle ${valuation.vehicleRegNumber} submitted for L2 approval!`,
-    "success",
-  );
+    Utils.showAlert(
+      `Vehicle ${valuation.vehicleRegNumber} submitted for L2 approval!`,
+      "success",
+    );
 
-  selectedL1LeadId = null;
-  // Reset form and refresh list
-  initL1Queue();
+    selectedL1LeadId = null;
+    // Reset form and refresh list
+    initL1Queue();
+  } catch (err) {
+    console.error("Valuation submission failed:", err);
+    Utils.showAlert(`Submission failed: ${err.message}`, "error");
+    await Api.syncAll();
+    initL1Queue();
+  }
 }
 
 // ====================================================
@@ -1254,6 +1258,7 @@ function initPickerQueue() {
 
   document.getElementById("picker-queue-empty").style.display = "none";
   document.getElementById("picker-queue-list").style.display = "block";
+  document.getElementById("picker-queue").style.display = "block";
 
   leads.forEach((l) => {
     const card = document.createElement("div");
@@ -1274,9 +1279,13 @@ function initPickerQueue() {
     selectedPickerLeadId &&
     leads.find((l) => l.id === selectedPickerLeadId)
   ) {
-    selectPickerLead(selectedPickerLeadId);
+    const detailCard = document.getElementById("picker-detail-card");
+    if (detailCard && detailCard.style.display !== "block") {
+      selectPickerLead(selectedPickerLeadId);
+    }
   } else {
     document.getElementById("picker-detail-card").style.display = "none";
+    selectedPickerLeadId = null;
   }
 }
 
@@ -1295,27 +1304,171 @@ function selectPickerLead(leadId) {
   const lead = Api.getLeadById(leadId);
   if (!lead) return;
 
+  // Hide list and show detail page
+  const queue = document.getElementById("picker-queue");
+  if (queue) queue.style.display = "none";
   document.getElementById("picker-detail-card").style.display = "block";
+
+  // Hide extended details initially, show button, hide loading state
+  document.getElementById("pick-extended-details").style.display = "none";
+  document.getElementById("pick-more-details-btn").style.display = "block";
+  document.getElementById("pick-more-details-loading").style.display = "none";
 
   // Fill details
   document.getElementById("pick-car-model").innerText =
     `${lead.make || ""} ${lead.model}`;
   document.getElementById("pick-reg-no").innerText = lead.vehicleNumber;
-  document.getElementById("pick-owner-name").innerText = lead.ownerName;
+  document.getElementById("pick-owner-name").innerText = lead.ownerName || "—";
 
   const phoneLink = document.getElementById("pick-owner-phone-link");
-  phoneLink.innerText = lead.phone;
-  phoneLink.href = `tel:${lead.phone}`;
+  phoneLink.innerText = lead.phone || "—";
+  phoneLink.href = lead.phone ? `tel:${lead.phone}` : "#";
 
-  // Maps link
-  const mapsBtn = document.getElementById("pick-maps-btn");
-  const formattedAddress = encodeURIComponent(`${lead.ownerName}, India`);
-  mapsBtn.href = `https://www.google.com/maps/search/?api=1&query=${formattedAddress}`;
+  const address = lead.address || (lead.l1Details && lead.l1Details.ownerAddress) || "—";
+  document.getElementById("pick-owner-address").innerText = address;
+
+  // Load iframe Google Map
+  const encodedAddress = encodeURIComponent(address !== "—" ? address : `${lead.ownerName || ""}, India`);
+  document.getElementById("pick-map-iframe").src = `https://maps.google.com/maps?q=${encodedAddress}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
 
   // Reset proof and signature
   isProofSnapped = false;
   updateSingleDocCard("pickup-proof", "Take Delivery Proof Photo", null, true);
   initSignatureCanvas();
+}
+
+async function loadPickerMoreDetails() {
+  if (!selectedPickerLeadId) return;
+
+  const btn = document.getElementById("pick-more-details-btn");
+  const loading = document.getElementById("pick-more-details-loading");
+  const extended = document.getElementById("pick-extended-details");
+
+  btn.style.display = "none";
+  loading.style.display = "block";
+
+  try {
+    const lead = await Api.fetchLeadDetailsFromServer(selectedPickerLeadId);
+    if (!lead) throw new Error("Lead specifications not found on server.");
+
+    // Fill specifications details
+    document.getElementById("pick-veh-year").innerText = lead.year || (lead.l1Details && lead.l1Details.year) || "—";
+    document.getElementById("pick-veh-colour").innerText = lead.colour || (lead.l1Details && lead.l1Details.colour) || "—";
+    document.getElementById("pick-veh-fuel").innerText = lead.fuelType || (lead.l1Details && lead.l1Details.fuelType) || "—";
+    const kms = lead.kmsDriven || (lead.l1Details && lead.l1Details.kmsDriven) || 0;
+    document.getElementById("pick-veh-kms").innerText = kms ? `${kms.toLocaleString("en-IN")} km` : "—";
+    document.getElementById("pick-veh-engine-no").innerText = (lead.l1Details && lead.l1Details.engineNumber) || "—";
+    document.getElementById("pick-veh-chassis-no").innerText = (lead.l1Details && lead.l1Details.chassisNumber) || "—";
+
+    // Payout and Payment Details
+    const finalPrice = lead.paymentDetails && lead.paymentDetails.amount 
+      ? lead.paymentDetails.amount 
+      : (lead.l1Details && (lead.l1Details.agreedPrice || lead.l1Details.offeredPrice || lead.l1Details.recommendedPrice) 
+         ? (lead.l1Details.agreedPrice || lead.l1Details.offeredPrice || lead.l1Details.recommendedPrice) 
+         : lead.expectedPrice || 0);
+    document.getElementById("pick-agreed-price").innerText = Utils.formatCurrency(finalPrice);
+
+    const payMode = (lead.l1Details && lead.l1Details.paymentMode) || (lead.paymentDetails && lead.paymentDetails.paymentMode) || "—";
+    const modeLabelMap = {
+      upi: "UPI (Unified Payments Interface)",
+      cash: "Cash Payout",
+      bank: "Bank Transfer (NEFT/IMPS)",
+    };
+    document.getElementById("pick-payment-mode").innerText = modeLabelMap[payMode] || (payMode !== "—" ? payMode.toUpperCase() : "—");
+
+    const payDetailsContainer = document.getElementById("pick-payment-details-container");
+    const payDetails = (lead.l1Details && (lead.l1Details.paymentDetails || lead.l1Details.bankDetails)) || lead.paymentDetails || {};
+    if (payMode === "upi") {
+      payDetailsContainer.style.display = "block";
+      payDetailsContainer.innerHTML = `<div><strong>UPI ID:</strong> <span>${payDetails.upiId || "—"}</span></div>`;
+    } else if (payMode === "cash") {
+      payDetailsContainer.style.display = "block";
+      payDetailsContainer.innerHTML = `<div><strong>Status:</strong> <span style="color:var(--success-color); font-weight:600;">✓ Cash handover confirmed</span></div>`;
+    } else if (payMode === "bank") {
+      payDetailsContainer.style.display = "block";
+      payDetailsContainer.innerHTML = `
+        <div style="display:grid; gap:4px;">
+          <div><strong>Holder:</strong> <span>${payDetails.accountHolder || "—"}</span></div>
+          <div><strong>Bank:</strong> <span>${payDetails.bankName || "—"}</span></div>
+          <div><strong>A/C No:</strong> <span>${payDetails.accountNumber || "—"}</span></div>
+          <div><strong>IFSC:</strong> <span>${payDetails.ifscCode || "—"}</span></div>
+        </div>
+      `;
+    } else {
+      payDetailsContainer.style.display = "none";
+    }
+
+    // Condition & Valuation
+    const bodyCond = lead.bodyCondition || (lead.l1Details && lead.l1Details.bodyCondition) || "—";
+    document.getElementById("pick-cond-body").innerText = bodyCond !== "—" ? `${bodyCond}/10` : "—";
+
+    const engineCond = (lead.l1Details && lead.l1Details.engineCondition) || "—";
+    document.getElementById("pick-cond-engine").innerText = engineCond !== "—" ? `${engineCond}/10` : "—";
+
+    const tyreCond = (lead.l1Details && lead.l1Details.tyreCondition) || "—";
+    document.getElementById("pick-cond-tyre").innerText = tyreCond !== "—" ? `${tyreCond}/10` : "—";
+
+    document.getElementById("pick-remarks").innerText = (lead.l1Details && lead.l1Details.accidentHistory) || "—";
+
+    // Accessories
+    const missingContainer = document.getElementById("pick-missing-parts");
+    missingContainer.innerHTML = "";
+    const missingParts = lead.l1Details && lead.l1Details.missingParts ? lead.l1Details.missingParts : [];
+    if (missingParts.length === 0) {
+      missingContainer.innerHTML = '<span style="color:var(--text-secondary); font-size:0.75rem;">None declared.</span>';
+    } else {
+      missingParts.forEach((part) => {
+        const badge = document.createElement("span");
+        badge.style.cssText =
+          "background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); font-size:0.7rem; font-weight:600; padding:2px 6px; border-radius:4px; margin-right: 4px; margin-bottom: 4px; display: inline-block;";
+        badge.innerText = part;
+        missingContainer.appendChild(badge);
+      });
+    }
+
+    // KYC Checklist
+    const kycList = document.getElementById("pick-kyc-docs-list");
+    kycList.innerHTML = "";
+    const docs = (lead.l1Details && lead.l1Details.documents) || {};
+    const uploadedDocs = Object.keys(docs).filter(k => docs[k]);
+    if (uploadedDocs.length === 0) {
+      kycList.innerHTML = '<span style="color:var(--text-secondary); font-size:0.75rem;">No documents uploaded.</span>';
+    } else {
+      uploadedDocs.forEach(k => {
+        const li = document.createElement("li");
+        li.style.fontSize = "0.75rem";
+        li.style.marginBottom = "2px";
+        const label = k.replace("rc", "RC ").toUpperCase();
+        li.innerHTML = `<span style="color:var(--success-color); font-weight:600;">✓</span> ${label}`;
+        kycList.appendChild(li);
+      });
+    }
+
+    // Photo thumbnails
+    const photoGallery = document.getElementById("pick-photos-gallery");
+    photoGallery.innerHTML = "";
+    const media = (lead.l1Details && lead.l1Details.media) || {};
+    const photoUrls = Object.values(media).filter(Boolean);
+    if (photoUrls.length === 0) {
+      photoGallery.innerHTML = '<span style="color:var(--text-secondary); font-size:0.75rem;">No photos available.</span>';
+    } else {
+      photoUrls.forEach(url => {
+        const box = document.createElement("div");
+        box.style.cssText = "width:36px; height:36px; background:var(--surface-variant); border:1px solid var(--border-color); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-secondary);";
+        box.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
+        photoGallery.appendChild(box);
+      });
+    }
+
+    // Reveal extended details
+    extended.style.display = "block";
+  } catch (err) {
+    console.error("Failed to load picker details:", err);
+    Utils.showAlert(`Error loading details: ${err.message}`, "error");
+    btn.style.display = "block";
+  } finally {
+    loading.style.display = "none";
+  }
 }
 
 function triggerCallShort() {
@@ -1435,42 +1588,56 @@ async function handleConfirmCollection() {
   const leads = Api.getLeads();
   const idx = leads.findIndex((l) => l.id === selectedPickerLeadId);
   if (idx !== -1) {
+    const originalStatus = leads[idx].status;
+    const originalPickupDetails = leads[idx].pickupDetails;
+
     leads[idx].status = "picked_up";
     leads[idx].pickupDetails = {
       pickedUpAt: new Date().toISOString(),
       pickedBy: user.id,
       proofPhoto: "pickup_proof.jpg",
+      signature: sigCanvas ? sigCanvas.toDataURL("image/png") : null,
     };
-    await Api.saveLeads(leads);
+
+    try {
+      await Api.saveLeads(leads);
+
+      await Api.logAction(
+        user.id,
+        "VEHICLE_PICKED_UP",
+        "leads",
+        selectedPickerLeadId,
+        "payment_confirmed",
+        `Collector: ${user.name}`,
+      );
+
+      // Notify L4 Scrapper role users
+      const scrappers = Api.getUsers().filter((u) =>
+        u.permissions.includes("l4_scrapper"),
+      );
+      scrappers.forEach((s) => {
+        Api.addNotification(
+          s.id,
+          selectedPickerLeadId,
+          `Vehicle ${lead.vehicleNumber} successfully picked up by field staff. Operational in scrapping bay.`,
+        );
+      });
+
+      Utils.showAlert(
+        `Vehicle ${lead.vehicleNumber} successfully picked up!`,
+        "success",
+      );
+      selectedPickerLeadId = null;
+      initPickerQueue();
+    } catch (err) {
+      console.error("Pickup confirmation failed:", err);
+      leads[idx].status = originalStatus;
+      leads[idx].pickupDetails = originalPickupDetails;
+      Utils.showAlert(`Pickup confirmation failed: ${err.message}`, "error");
+      await Api.syncAll();
+      initPickerQueue();
+    }
   }
-
-  await Api.logAction(
-    user.id,
-    "VEHICLE_PICKED_UP",
-    "leads",
-    selectedPickerLeadId,
-    "payment_confirmed",
-    `Collector: ${user.name}`,
-  );
-
-  // Notify L4 Scrapper role users
-  const scrappers = Api.getUsers().filter((u) =>
-    u.permissions.includes("l4_scrapper"),
-  );
-  scrappers.forEach((s) => {
-    Api.addNotification(
-      s.id,
-      selectedPickerLeadId,
-      `Vehicle ${lead.vehicleNumber} successfully picked up by field staff. Operational in scrapping bay.`,
-    );
-  });
-
-  Utils.showAlert(
-    `Vehicle ${lead.vehicleNumber} successfully picked up!`,
-    "success",
-  );
-  selectedPickerLeadId = null;
-  initPickerQueue();
 }
 
 // ====================================================
@@ -1500,6 +1667,8 @@ function initScrapQueue() {
   if (emptyEl2) emptyEl2.style.display = "none";
   const splitEl2 = document.getElementById("scrapper-workspace-split");
   if (splitEl2) splitEl2.style.display = "grid";
+  const queueEl = document.getElementById("scrapper-queue");
+  if (queueEl) queueEl.style.display = "block";
 
   leads.forEach((l) => {
     const card = document.createElement("div");
@@ -1517,12 +1686,16 @@ function initScrapQueue() {
   });
 
   if (selectedScrapLeadId && leads.find((l) => l.id === selectedScrapLeadId)) {
-    selectScrapLead(selectedScrapLeadId);
+    const detailCard = document.getElementById("scrapper-detail-card");
+    if (detailCard && detailCard.style.display !== "block") {
+      selectScrapLead(selectedScrapLeadId);
+    }
   } else {
     document.getElementById("scrapper-detail-card").style.display = "none";
-    document
-      .getElementById("scrapper-workspace-split")
-      .classList.remove("details-active");
+    if (document.getElementById("scrapper-workspace-split")) {
+      document.getElementById("scrapper-workspace-split").classList.remove("details-active");
+    }
+    selectedScrapLeadId = null;
   }
 }
 
@@ -1541,6 +1714,9 @@ function selectScrapLead(leadId) {
   const lead = Api.getLeadById(leadId);
   if (!lead) return;
 
+  // Hide queue and show details
+  const queueEl = document.getElementById("scrapper-queue");
+  if (queueEl) queueEl.style.display = "none";
   document.getElementById("scrapper-detail-card").style.display = "block";
   document
     .getElementById("scrapper-workspace-split")
@@ -1632,6 +1808,9 @@ async function handleCompleteScrapping() {
   const leads = Api.getLeads();
   const idx = leads.findIndex((l) => l.id === selectedScrapLeadId);
   if (idx !== -1) {
+    const originalStatus = leads[idx].status;
+    const originalScrapDetails = leads[idx].scrapDetails;
+
     leads[idx].status = "scrapped";
     leads[idx].scrapDetails = {
       scrappedAt: new Date().toISOString(),
@@ -1640,25 +1819,35 @@ async function handleCompleteScrapping() {
       scrapValue: realizedVal,
       recoveredSalvage: [...selectedScrapParts],
     };
-    await Api.saveLeads(leads);
+
+    try {
+      await Api.saveLeads(leads);
+
+      await Api.logAction(
+        user.id,
+        "VEHICLE_SCRAPPED",
+        "leads",
+        selectedScrapLeadId,
+        "picked_up",
+        `Weight: ${weight}kg, Value: ₹${realizedVal}`,
+      );
+
+      // Alert turnover recalculations trigger
+      Utils.showAlert(
+        `Vehicle ${lead.vehicleNumber} successfully scrapped! turnover logged.`,
+        "success",
+      );
+      selectedScrapLeadId = null;
+      initScrapQueue();
+    } catch (err) {
+      console.error("Scrapping confirmation failed:", err);
+      leads[idx].status = originalStatus;
+      leads[idx].scrapDetails = originalScrapDetails;
+      Utils.showAlert(`Scrapping confirmation failed: ${err.message}`, "error");
+      await Api.syncAll();
+      initScrapQueue();
+    }
   }
-
-  await Api.logAction(
-    user.id,
-    "VEHICLE_SCRAPPED",
-    "leads",
-    selectedScrapLeadId,
-    "picked_up",
-    `Weight: ${weight}kg, Value: ₹${realizedVal}`,
-  );
-
-  // Alert turnover recalculations trigger
-  Utils.showAlert(
-    `Vehicle ${lead.vehicleNumber} successfully scrapped! turnover logged.`,
-    "success",
-  );
-  selectedScrapLeadId = null;
-  initScrapQueue();
 }
 
 // ==============================================

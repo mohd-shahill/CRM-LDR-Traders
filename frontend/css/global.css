@@ -673,6 +673,137 @@ a:hover {
 .login-visual-panel .landing-logo span {
   background: linear-gradient(135deg, #38bdf8, #8ab4f8);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* === Audit Diff Formatting === */
+.audit-diff-list {
+  margin: 8px 0 0 0;
+  padding-left: 16px;
+  list-style-type: disc;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.audit-diff-list li {
+  margin-bottom: 4px;
+}
+
+.diff-key {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.diff-added {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.diff-removed {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-decoration: line-through;
+}
+
+.diff-changed {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.audit-diff-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* === Autocomplete System CSS === */
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-elevation-2);
+  z-index: 1010;
+}
+
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+  color: var(--text-primary);
+}
+
+.autocomplete-item:hover {
+  background: var(--surface-variant);
+}
+
+.autocomplete-item.no-matches {
+  color: var(--text-secondary);
+  font-style: italic;
+  cursor: default;
+}
+
+.autocomplete-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.autocomplete-item-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.autocomplete-item-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.autocomplete-item-sub {
+  font-size: 10px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hide input number increment/decrement spin buttons globally */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 

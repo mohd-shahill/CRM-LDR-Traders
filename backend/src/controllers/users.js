@@ -1,5 +1,6 @@
 import db from '../config/db.js';
 import bcrypt from 'bcryptjs';
+import { logAction } from '../services/logging.js';
 
 export const getUsers = async (req, res) => {
   try {
@@ -38,7 +39,10 @@ export const createUser = async (req, res) => {
       [id, name, email, phone, passwordHash, userPermissions]
     );
 
-    return res.status(201).json({ message: 'User enrolled successfully.', user: result.rows[0] });
+    const newUser = result.rows[0];
+    await logAction(req.user?.id || 'system', 'USER_ENROLLED', 'users', id, null, newUser);
+
+    return res.status(201).json({ message: 'User enrolled successfully.', user: newUser });
   } catch (error) {
     console.error('Create user error:', error);
     return res.status(500).json({ error: 'Server error enrolling user.' });
@@ -54,6 +58,16 @@ export const updateUser = async (req, res) => {
   }
 
   try {
+    // Fetch previous user state for audit diff logging
+    const checkUser = await db.query(
+      'SELECT id, name, email, phone, permissions, is_super_admin, is_active FROM users WHERE id = $1',
+      [id]
+    );
+    if (checkUser.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    const previousUser = checkUser.rows[0];
+
     let query = `
       UPDATE users 
       SET name = $1, email = $2, phone = $3, permissions = $4, is_active = $5
@@ -79,7 +93,10 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    return res.json({ message: 'User updated successfully.', user: result.rows[0] });
+    const updatedUser = result.rows[0];
+    await logAction(req.user?.id || 'system', 'USER_UPDATED', 'users', id, previousUser, updatedUser);
+
+    return res.json({ message: 'User updated successfully.', user: updatedUser });
   } catch (error) {
     console.error('Update user error:', error);
     return res.status(500).json({ error: 'Server error updating user.' });

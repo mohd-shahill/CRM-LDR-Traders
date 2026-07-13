@@ -381,7 +381,6 @@
       background: var(--surface-color);
       border: 1px solid var(--border-color);
       border-radius: var(--border-radius-lg);
-      overflow: hidden;
     }
 
     .admin-table {
@@ -489,6 +488,11 @@
     .status-badge.scrapped {
       background: rgba(107, 114, 128, 0.15);
       color: #9ca3af;
+    }
+
+    .status-badge.picked_up {
+      background: rgba(139, 92, 246, 0.15);
+      color: #a78bfa;
     }
 
     .status-badge.active-st {
@@ -623,7 +627,7 @@
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
-    /* ===== Modals ===== */
+    /* ===== Modals & Drawer ===== */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -642,6 +646,52 @@
       width: 100%;
       max-width: 500px;
       animation: modalSlideUp 0.3s var(--transition-curve) forwards;
+    }
+
+    /* Right Slide-out Drawer */
+    .detail-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 520px;
+      max-width: 95%;
+      background: var(--surface-color);
+      border-left: 1px solid var(--border-color);
+      box-shadow: -8px 0 32px rgba(0, 0, 0, 0.25);
+      z-index: 1050;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .detail-drawer.open {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      flex-shrink: 0;
+    }
+
+    .drawer-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .drawer-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      background: rgba(255, 255, 255, 0.01);
+      flex-shrink: 0;
     }
 
     /* ===== Responsive ===== */
@@ -1392,6 +1442,7 @@
                   onchange="loadFinalizedPanel()">
                   <option value="all">All Finalized</option>
                   <option value="payment_confirmed">Paid</option>
+                  <option value="picked_up">Picked Up</option>
                   <option value="scrapped">Scrapped</option>
                 </select>
               </div>
@@ -1448,9 +1499,12 @@
                 <div class="vahan-box">
                   <h4 class="section-box-title">Vehicle Information</h4>
                   <div class="vahan-row"><span>Make / Model</span><strong id="fin-info-model">—</strong></div>
+                  <div class="vahan-row"><span>Registration Number</span><strong id="fin-info-reg">—</strong></div>
                   <div class="vahan-row"><span>Manufacturing Year</span><strong id="fin-info-year">—</strong></div>
                   <div class="vahan-row"><span>Fuel Type</span><strong id="fin-info-fuel">—</strong></div>
                   <div class="vahan-row"><span>KMs Driven</span><strong id="fin-info-kms">—</strong></div>
+                  <div class="vahan-row"><span>Colour</span><strong id="fin-info-colour">—</strong></div>
+                  <div class="vahan-row"><span>Engine Number</span><strong id="fin-info-engine">—</strong></div>
                   <div class="vahan-row"><span>Chassis Number</span><strong id="fin-info-chassis"
                       style="font-family:monospace;">—</strong></div>
                 </div>
@@ -1460,11 +1514,19 @@
                   <h4 class="section-box-title">Acquisition & Transaction</h4>
                   <div class="vahan-row"><span>Seller Name</span><strong id="fin-info-owner">—</strong></div>
                   <div class="vahan-row"><span>Phone Number</span><strong id="fin-info-phone">—</strong></div>
+                  <div class="vahan-row"><span>Seller Email</span><strong id="fin-info-email">—</strong></div>
+                  <div class="vahan-row"><span>Seller Address</span><strong id="fin-info-address">—</strong></div>
                   <div class="vahan-row"><span>Payment Method</span><strong id="fin-info-method"
                       style="text-transform:uppercase; color:var(--primary-color);">—</strong></div>
                   <div class="vahan-row"><span>Transaction UTR</span><strong id="fin-info-utr"
                       style="font-family:monospace;">—</strong></div>
                   <div class="vahan-row"><span>Transaction Date</span><strong id="fin-info-date">—</strong></div>
+                  <div class="vahan-row" style="flex-direction:column; align-items:flex-start; gap:4px; display:none;"
+                    id="fin-info-payout-details-row">
+                    <span style="font-size:0.75rem; color:var(--text-secondary);">Payout Account Details</span>
+                    <strong id="fin-info-payout-details"
+                      style="font-weight:500; font-size:0.8rem; line-height:1.4; white-space:pre-wrap; width:100%; font-family:monospace; display:block;">—</strong>
+                  </div>
                 </div>
               </div>
 
@@ -1535,6 +1597,11 @@
                         id="fin-pick-date">—</strong></div>
                     <div class="vahan-row" style="padding:8px 0;"><span>Handover Proof Link</span><strong
                         id="fin-pick-proof">—</strong></div>
+                    <div class="vahan-row" style="padding:8px 0; display:none;" id="fin-pick-sig-row">
+                      <span>Seller Signature</span>
+                      <strong><img id="fin-pick-sig-img" src="" alt="Digital Signature"
+                          style="max-height: 48px; border: 1px solid var(--border-color); border-radius: 4px; background: #ffffff; padding: 2px;" /></strong>
+                    </div>
                   </div>
                   <div id="fin-scrapper-subbox">
                     <h5
@@ -1620,23 +1687,23 @@
 
   <!-- ============ MODALS ============ -->
 
-  <!-- Lead Detail Modal (for New / Assigned leads) -->
-  <div class="modal-overlay" id="lead-detail-modal">
-    <div class="premium-card modal-card" onclick="event.stopPropagation()"
-      style="max-width: 600px; padding: 24px; display: flex; flex-direction: column; max-height: 85vh; overflow-y: auto;">
-      <div
-        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; flex-shrink:0;">
-        <div>
-          <h3 id="lead-detail-title"
-            style="font-family: var(--font-title); font-size: 1.25rem; font-weight: 600; margin: 0; color: var(--text-main);">
-            Lead Details</h3>
-          <span id="lead-detail-id"
-            style="font-family: monospace; font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; display: inline-block;">#101</span>
-        </div>
+  <!-- Lead Detail Drawer (Slides from Right) -->
+  <div class="detail-drawer" id="lead-detail-modal">
+    <div class="drawer-header">
+      <div>
+        <h3 id="lead-detail-title"
+          style="font-family: var(--font-title); font-size: 1.25rem; font-weight: 600; margin: 0; color: var(--text-main);">
+          Lead Details</h3>
+        <span id="lead-detail-id"
+          style="font-family: monospace; font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; display: inline-block;">#101</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
         <span id="lead-detail-status" class="status-badge new">New</span>
       </div>
+    </div>
 
-      <div style="display: flex; flex-direction: column; gap: 20px; flex-grow: 1;">
+    <div class="drawer-content">
+      <div style="display: flex; flex-direction: column; gap: 20px;">
         <!-- Owner info -->
         <div>
           <h4
@@ -1697,8 +1764,6 @@
           </div>
         </div>
 
-
-
         <!-- L1 Valuation Details (conditionally shown) -->
         <div id="lead-detail-valuation-section" style="display: none;">
           <h4
@@ -1728,29 +1793,30 @@
         </div>
 
         <!-- Assignment Section -->
-        <div>
+        <div id="lead-detail-assignment-section">
           <h4
             style="margin: 0 0 10px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
             Valuation Agent Assignment</h4>
           <div
             style="display: flex; gap: 12px; align-items: flex-end; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
-            <div style="flex-grow: 1;">
+            <div style="flex-grow: 1; position: relative;">
               <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Assign
                 L1 Coordinator</span>
-              <select id="lead-detail-agent-select" class="premium-select" style="height: 38px; width: 100%; padding-top: 0; padding-bottom: 0;">
-                <!-- agents options -->
-              </select>
+              <input type="text" id="lead-detail-agent-search" class="premium-input" style="height: 38px; width: 100%;"
+                placeholder="Type coordinator name or email..." autocomplete="off">
+              <input type="hidden" id="lead-detail-agent-select" value="">
+              <div id="lead-detail-agent-dropdown" class="autocomplete-dropdown" style="display: none;"></div>
             </div>
             <button id="lead-detail-assign-btn" class="premium-btn premium-btn-primary"
               style="height: 38px; padding: 0 20px;" onclick="saveL1AssignmentFromModal()">Assign</button>
           </div>
         </div>
       </div>
+    </div>
 
-      <div
-        style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 20px; flex-shrink:0;">
-        <button class="premium-btn premium-btn-secondary" onclick="closeLeadDetailModal()">Close</button>
-      </div>
+    <div class="drawer-footer" style="display: flex; justify-content: space-between; width: 100%;">
+      <button id="lead-detail-reject-btn" class="premium-btn" style="background-color: var(--error-color); color: #fff; border: none; height: 38px; padding: 0 16px; font-size: 0.8rem;" onclick="openLeadDetailRejectDialog()">Reject / Cancel Lead</button>
+      <button class="premium-btn premium-btn-secondary" style="height: 38px; padding: 0 16px; font-size: 0.8rem;" onclick="closeLeadDetailModal()">Close</button>
     </div>
   </div>
 
@@ -1775,77 +1841,101 @@
 
   <!-- Create Lead Modal (Admin) -->
   <div class="modal-overlay" id="create-lead-modal">
-    <div class="premium-card modal-card" onclick="event.stopPropagation()" style="max-width:600px; max-height: 90vh; overflow-y: auto;">
-      <h3 style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px;">Create New Lead</h3>
-      
+    <div class="premium-card modal-card" onclick="event.stopPropagation()"
+      style="max-width:600px; max-height: 90vh; overflow-y: auto;">
+      <h3 style="font-family:var(--font-title); font-size:1.25rem; font-weight:500; margin-bottom:16px;">Create New Lead
+      </h3>
+
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
         <div class="input-wrapper">
           <span class="input-label">Owner Full Name *</span>
-          <input type="text" id="create-lead-owner-name" class="premium-input" style="height:40px;" required placeholder="Owner name">
+          <input type="text" id="create-lead-owner-name" class="premium-input" style="height:40px;" required
+            placeholder="Owner name">
         </div>
         <div class="input-wrapper">
           <span class="input-label">Phone Number *</span>
-          <input type="tel" id="create-lead-phone" class="premium-input" style="height:40px;" required placeholder="e.g. 9876543210">
+          <input type="tel" id="create-lead-phone" class="premium-input" style="height:40px;" required
+            placeholder="e.g. 9876543210">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
         <div class="input-wrapper">
           <span class="input-label">Alternate Phone</span>
-          <input type="tel" id="create-lead-alt-phone" class="premium-input" style="height:40px;" placeholder="Alt phone number">
+          <input type="tel" id="create-lead-alt-phone" class="premium-input" style="height:40px;"
+            placeholder="Alt phone number">
         </div>
         <div class="input-wrapper">
           <span class="input-label">Vehicle Registration Number *</span>
-          <input type="text" id="create-lead-vehicle-no" class="premium-input" style="height:40px;" required placeholder="e.g. DL3CAQ9981">
+          <input type="text" id="create-lead-vehicle-no" class="premium-input" style="height:40px;" required
+            placeholder="e.g. DL3CAQ9981">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr; gap:16px;">
+        <div class="input-wrapper">
+          <span class="input-label">Address</span>
+          <input type="text" id="create-lead-address" class="premium-input" style="height:40px;"
+            placeholder="e.g. 12, Main Street, Delhi">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
         <div class="input-wrapper">
           <span class="input-label">Make / Manufacturer *</span>
-          <input type="text" id="create-lead-make" class="premium-input" style="height:40px;" required placeholder="e.g. Hyundai">
+          <input type="text" id="create-lead-make" class="premium-input" style="height:40px;" required
+            placeholder="e.g. Hyundai">
         </div>
         <div class="input-wrapper">
           <span class="input-label">Model Name *</span>
-          <input type="text" id="create-lead-model" class="premium-input" style="height:40px;" required placeholder="e.g. i20">
+          <input type="text" id="create-lead-model" class="premium-input" style="height:40px;" required
+            placeholder="e.g. i20">
         </div>
         <div class="input-wrapper">
           <span class="input-label">Manufacturing Year *</span>
-          <input type="number" id="create-lead-year" class="premium-input" style="height:40px;" required placeholder="e.g. 2015">
+          <input type="number" id="create-lead-year" class="premium-input" style="height:40px;" required
+            placeholder="e.g. 2015">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
         <div class="input-wrapper">
           <span class="input-label">Colour</span>
-          <input type="text" id="create-lead-colour" class="premium-input" style="height:40px;" placeholder="e.g. Silver">
+          <input type="text" id="create-lead-colour" class="premium-input" style="height:40px;"
+            placeholder="e.g. Silver">
         </div>
         <div class="input-wrapper">
           <span class="input-label">Fuel Type *</span>
-          <select id="create-lead-fuel" class="premium-select" style="height:40px; width: 100%; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-primary); border-radius: 8px; padding: 0 10px;" required>
+          <select id="create-lead-fuel" class="premium-select"
+            style="height:40px; width: 100%; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-primary); border-radius: 8px; padding: 0 10px;"
+            required>
             <option value="">Select...</option>
             <option value="Petrol">Petrol</option>
             <option value="Diesel">Diesel</option>
             <option value="CNG">CNG</option>
-            <option value="LPG">LPG</option>
+            <option value="CNG+Petrol">CNG+Petrol</option>
             <option value="Electric">Electric</option>
             <option value="Hybrid">Hybrid</option>
           </select>
         </div>
         <div class="input-wrapper">
           <span class="input-label">KMs Driven *</span>
-          <input type="number" id="create-lead-kms" class="premium-input" style="height:40px;" required placeholder="e.g. 85000">
+          <input type="number" id="create-lead-kms" class="premium-input" style="height:40px;" required
+            placeholder="e.g. 85000">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
         <div class="input-wrapper">
           <span class="input-label">Expected Price (₹) *</span>
-          <input type="number" id="create-lead-expected" class="premium-input" style="height:40px;" required placeholder="e.g. 150000">
+          <input type="number" id="create-lead-expected" class="premium-input" style="height:40px;" required
+            placeholder="e.g. 150000">
         </div>
         <div class="input-wrapper" style="display:flex; align-items:center; height:100%; padding-top:20px;">
-          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; color:var(--text-primary);">
-            <input type="checkbox" id="create-lead-new-car" style="width:18px; height:18px; accent-color:var(--primary-color);">
+          <label
+            style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; color:var(--text-primary);">
+            <input type="checkbox" id="create-lead-new-car"
+              style="width:18px; height:18px; accent-color:var(--primary-color);">
             Wants new car?
           </label>
         </div>
@@ -2692,6 +2782,7 @@
   <script src="../js/auth.js?v=2"></script>
   <script src="../js/utils.js?v=2"></script>
   <script src="admin.js?v=3"></script>
+  <script src="../js/socket-client.js"></script>
 </body>
 
 </html>

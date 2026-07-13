@@ -75,11 +75,6 @@
 
         <button type="submit" class="premium-btn premium-btn-primary" style="width: 100%;">Sign In to Workspace</button>
       </form>
-
-      <!-- Quick demo accounts -->
-      <div class="quick-login-grid" id="quick-demo-logins">
-        <!-- Loaded dynamically -->
-      </div>
     </div>
 
   </main>
@@ -102,28 +97,6 @@
         window.location.replace('index.html');
         return;
       }
-      
-      // Load demo accounts relevant only to Employees (L1 and L4)
-      const container = document.getElementById('quick-demo-logins');
-      container.innerHTML = `<span style="grid-column: span 2; font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Quick Employee Logins:</span>`;
-      
-      const users = Api.getUsers();
-      const employeeUsers = users.filter(u => u.permissions.includes('l1') || u.permissions.includes('l4_picker') || u.permissions.includes('l4_scrapper'));
-      employeeUsers.forEach(u => {
-        let label = 'L1 Agent';
-        if (u.permissions.includes('l1') && u.permissions.includes('l4_picker')) label = 'Agent + Picker';
-        else if (u.permissions.includes('l4_picker')) label = 'L4 Picker';
-        else if (u.permissions.includes('l4_scrapper')) label = 'L4 Scrapper';
-
-        const tag = document.createElement('div');
-        tag.className = 'demo-tag';
-        tag.innerText = `${u.name} (${label})`;
-        tag.onclick = () => {
-          document.getElementById('login-email').value = u.email;
-          document.getElementById('login-password').value = u.password || 'password';
-        };
-        container.appendChild(tag);
-      });
     });
 
     async function handleEmployeeLogin(event) {

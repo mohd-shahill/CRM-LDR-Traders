@@ -18,9 +18,10 @@ const uploadDir = path.join(__dirname, '../../uploads');
 const app = express();
 
 // Middleware
-const allowedOrigins = [
+export const allowedOrigins = [
   'http://localhost:5500',
   'http://127.0.0.1:5500',
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : [])
 ];
 
 app.use(cors({

@@ -6,6 +6,7 @@
 let activeTab = "";
 let selectedL2LeadId = null;
 let selectedL3LeadId = null;
+let selectedFinalizedLeadId = null;
 let l1ActiveFilter = "all";
 let pagesState = {
   l1: 1,
@@ -73,6 +74,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location.replace('#' + initialTab);
   }
   switchTab(initialTab, false);
+
+  // Polling disabled: replaced by real-time event-driven updates in socket-client.js
 });
 
 function getRoleDescription(user) {
@@ -205,6 +208,9 @@ const TAB_TITLES = {
 
 function switchTab(tabId, updateHash = true) {
   activeTab = tabId;
+  selectedL2LeadId = null;
+  selectedL3LeadId = null;
+  selectedFinalizedLeadId = null;
 
   // Reset pagination page for this tab
   if (pagesState[tabId]) {
@@ -280,6 +286,7 @@ function formatStatus(status) {
     approved: "Approved",
     payment_initiated: "Payment initiated",
     payment_confirmed: "Paid",
+    picked_up: "Picked Up",
     rejected: "Rejected",
     info_needed: "Info needed",
     scrapped: "Scrapped",
@@ -611,21 +618,15 @@ function openLeadDetailModal(leadId) {
     }
   }
 
-  // Populate L1 agents dropdown
-  const agentSelect = document.getElementById("lead-detail-agent-select");
-  agentSelect.innerHTML = '<option value="">Select agent</option>';
-  const l1Agents = Api.getUsers().filter(
-    (u) => u.permissions.includes("l1") && u.is_active,
-  );
-  l1Agents.forEach((agent) => {
-    const option = document.createElement("option");
-    option.value = agent.id;
-    option.innerText = agent.name;
-    if (lead.assignedTo === agent.id) {
-      option.selected = true;
-    }
-    agentSelect.appendChild(option);
-  });
+  // Hide assignment section if status is post-valuation (already approved/paid/picked/scrapped)
+  const assignmentSection = document.getElementById("lead-detail-assignment-section");
+  if (assignmentSection) {
+    const isPostValuation = ["approved", "payment_initiated", "payment_confirmed", "picked_up", "scrapped"].includes(lead.status);
+    assignmentSection.style.display = isPostValuation ? "none" : "block";
+  }
+
+  // Initialize L1 Coordinator Autocomplete
+  initL1CoordinatorAutocomplete(lead);
 
   // Assign Button text change depending on status
   const assignBtn = document.getElementById("lead-detail-assign-btn");
@@ -649,18 +650,111 @@ function openLeadDetailModal(leadId) {
       l1.accidentHistory || "None logged";
     document.getElementById("lead-detail-val-chassis").innerText =
       l1.chassisNumber || "—";
-    valuationSection.style.display = "block";
   } else {
     valuationSection.style.display = "none";
   }
+  // Handle visibility of global Reject/Cancel button
+  const rejectBtn = document.getElementById("lead-detail-reject-btn");
+  if (rejectBtn) {
+    const isFinalState = ["rejected", "scrapped"].includes(lead.status);
+    rejectBtn.style.display = isFinalState ? "none" : "block";
+  }
 
-  document.getElementById("lead-detail-modal").style.display = "flex";
+  document.getElementById("lead-detail-modal").classList.add("open");
+}
+
+function initL1CoordinatorAutocomplete(lead) {
+  const searchInput = document.getElementById("lead-detail-agent-search");
+  const hiddenInput = document.getElementById("lead-detail-agent-select");
+  const dropdown = document.getElementById("lead-detail-agent-dropdown");
+  if (!searchInput || !dropdown) return;
+
+  const l1Agents = Api.getUsers().filter(
+    (u) => u.permissions.includes("l1") && u.is_active,
+  );
+
+  // Set initial value
+  if (lead.assignedTo) {
+    const agent = l1Agents.find(a => a.id === lead.assignedTo);
+    searchInput.value = agent ? agent.name : "";
+    hiddenInput.value = lead.assignedTo;
+  } else {
+    searchInput.value = "";
+    hiddenInput.value = "";
+  }
+
+  // Render function
+  const renderList = (filterText = "") => {
+    dropdown.innerHTML = "";
+    const filtered = l1Agents.filter(a => 
+      a.name.toLowerCase().includes(filterText.toLowerCase()) || 
+      a.email.toLowerCase().includes(filterText.toLowerCase())
+    );
+
+    if (filtered.length === 0) {
+      dropdown.innerHTML = `<div class="autocomplete-item no-matches">No matching L1 coordinators found</div>`;
+      dropdown.style.display = "block";
+      return;
+    }
+
+    filtered.forEach(agent => {
+      const item = document.createElement("div");
+      item.className = "autocomplete-item";
+      item.onclick = (e) => {
+        e.stopPropagation();
+        searchInput.value = agent.name;
+        hiddenInput.value = agent.id;
+        dropdown.style.display = "none";
+      };
+
+      const initials = agent.name ? agent.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "AG";
+      item.innerHTML = `
+        <div class="autocomplete-avatar">${initials}</div>
+        <div class="autocomplete-item-details">
+          <span class="autocomplete-item-name">${agent.name}</span>
+          <span class="autocomplete-item-sub">${agent.email}</span>
+        </div>
+      `;
+      dropdown.appendChild(item);
+    });
+
+    dropdown.style.display = "block";
+  };
+
+  // Bind input events
+  searchInput.oninput = (e) => {
+    renderList(e.target.value);
+  };
+
+  searchInput.onfocus = () => {
+    renderList(searchInput.value);
+  };
+
+  // Close dropdown when clicking outside
+  const closeHandler = (e) => {
+    if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.style.display = "none";
+      document.removeEventListener("click", closeHandler);
+    }
+  };
+  document.addEventListener("click", closeHandler);
 }
 
 function closeLeadDetailModal() {
-  document.getElementById("lead-detail-modal").style.display = "none";
+  document.getElementById("lead-detail-modal").classList.remove("open");
   currentViewingLeadId = null;
 }
+
+// Close detail drawer when clicking outside
+document.addEventListener("click", (e) => {
+  const drawer = document.getElementById("lead-detail-modal");
+  if (drawer && drawer.classList.contains("open")) {
+    // If click is not inside the drawer, and not on a table row, close it
+    if (!drawer.contains(e.target) && !e.target.closest("tr")) {
+      closeLeadDetailModal();
+    }
+  }
+});
 
 async function saveL1AssignmentFromModal() {
   if (!currentViewingLeadId) return;
@@ -676,6 +770,8 @@ async function saveL1AssignmentFromModal() {
   const idx = leads.findIndex((l) => l.id === currentViewingLeadId);
   if (idx !== -1) {
     const lead = leads[idx];
+    const originalAssignedTo = lead.assignedTo;
+    const originalStatus = lead.status;
 
     // Update lead values
     leads[idx].assignedTo = agentId;
@@ -683,32 +779,46 @@ async function saveL1AssignmentFromModal() {
       leads[idx].status = "assigned";
     }
 
-    await Api.saveLeads(leads);
-    refreshSidebarBadges();
+    try {
+      await Api.saveLeads(leads);
+      refreshSidebarBadges();
 
-    const agent = Api.getUsers().find((u) => u.id === agentId);
-    await Api.logAction(
-      user.id,
-      "L1_AGENT_ASSIGNED",
-      "leads",
-      currentViewingLeadId,
-      null,
-      `Assigned L1 Agent: ${agent.name}`,
-    );
-    Api.addNotification(
-      agentId,
-      currentViewingLeadId,
-      `New lead ${lead.vehicleNumber} assigned to you!`,
-    );
+      const agent = Api.getUsers().find((u) => u.id === agentId);
+      await Api.logAction(
+        user.id,
+        "L1_AGENT_ASSIGNED",
+        "leads",
+        currentViewingLeadId,
+        null,
+        `Assigned L1 Agent: ${agent.name}`,
+      );
+      Api.addNotification(
+        agentId,
+        currentViewingLeadId,
+        `New lead ${lead.vehicleNumber} assigned to you!`,
+      );
 
-    Utils.showAlert(`Successfully assigned lead to ${agent.name}`, "success");
-    closeLeadDetailModal();
+      Utils.showAlert(`Successfully assigned lead to ${agent.name}`, "success");
+      closeLeadDetailModal();
 
-    // Reload whatever panel we are on
-    if (activeTab === "l1") {
-      loadL1Panel();
-    } else if (activeTab === "overview") {
-      loadOverview();
+      // Reload whatever panel we are on
+      if (activeTab === "l1") {
+        loadL1Panel();
+      } else if (activeTab === "overview") {
+        loadOverview();
+      }
+    } catch (err) {
+      console.error("Assignment failed:", err);
+      // Revert local modifications
+      leads[idx].assignedTo = originalAssignedTo;
+      leads[idx].status = originalStatus;
+      Utils.showAlert(`Assignment failed: ${err.message}`, "error");
+      await Api.syncAll();
+      if (activeTab === "l1") {
+        loadL1Panel();
+      } else if (activeTab === "overview") {
+        loadOverview();
+      }
     }
   }
 }
@@ -1130,6 +1240,10 @@ function openRejectDialog() {
 function closeRejectDialog() {
   document.getElementById("reject-modal").style.display = "none";
 }
+window.openLeadDetailRejectDialog = function() {
+  selectedL2LeadId = currentViewingLeadId;
+  openRejectDialog();
+};
 async function handleL2Reject() {
   const reason = document.getElementById("reject-reason").value.trim();
   if (!reason) {
@@ -1152,9 +1266,17 @@ async function handleL2Reject() {
     );
   Utils.showAlert(`Vehicle ${lead.vehicleNumber} rejected.`, "error");
   closeRejectDialog();
+  closeLeadDetailModal();
   selectedL2LeadId = null;
-  showL2TableView();
-  loadL2Panel();
+
+  // Refresh active panel/tab data
+  await Api.syncAll();
+  if (typeof activeTab !== "undefined" && activeTab) {
+    loadTabData(activeTab);
+  } else {
+    showL2TableView();
+    loadL2Panel();
+  }
   refreshSidebarBadges();
 }
 
@@ -1180,7 +1302,7 @@ function loadL3Panel() {
     (l) => l.status === "approved" || l.status === "payment_initiated",
   );
   const paidAll = leads.filter(
-    (l) => l.status === "payment_confirmed" || l.status === "scrapped",
+    (l) => l.status === "payment_confirmed" || l.status === "picked_up" || l.status === "scrapped",
   );
   const paidToday = paidAll.filter(
     (l) => l.paymentDetails && isToday(l.paymentDetails.confirmedAt),
@@ -1314,6 +1436,7 @@ function selectL3Lead(leadId) {
     l3MediaBox.innerHTML = "";
     if (lead.l1Details && lead.l1Details.documents) {
       Object.entries(lead.l1Details.documents).forEach(([key, val]) => {
+        if (!val) return;
         const item = document.createElement("div");
         item.className = "option-tile";
         item.style.cssText =
@@ -1448,6 +1571,11 @@ function mockDownloadVoucher() {
 // L4 — PICKER PANEL
 // ──────────────────────────────────────────────
 let changingPickerLeads = new Set();
+let selectedPickerTemp = {};
+
+window.storeTempPickerSelection = function(leadId, val) {
+  selectedPickerTemp[leadId] = val;
+};
 
 function enableChangePicker(leadId) {
   changingPickerLeads.add(leadId);
@@ -1456,6 +1584,7 @@ function enableChangePicker(leadId) {
 
 function cancelChangePicker(leadId) {
   changingPickerLeads.delete(leadId);
+  delete selectedPickerTemp[leadId];
   loadL4Panel();
 }
 
@@ -1490,15 +1619,15 @@ function loadL4Panel() {
     }
   }
 
+  emptyEl.style.display = "none";
+  tbody.closest(".table-wrap").style.display = "";
+
   if (paymentConfirmed.length === 0) {
-    emptyEl.style.display = "block";
-    tbody.closest(".table-wrap").style.display = "none";
+    tbody.innerHTML =
+      '<tr><td colspan="7" class="empty-state">No paid vehicles require picker assignment at this time.</td></tr>';
     document.getElementById("pagination-l4").style.display = "none";
     return;
   }
-
-  emptyEl.style.display = "none";
-  tbody.closest(".table-wrap").style.display = "";
 
   const pickers = Api.getUsers().filter(
     (u) => u.permissions.includes("l4_picker") && u.is_active,
@@ -1518,14 +1647,28 @@ function loadL4Panel() {
     const isAssigned = hasPicker && !isEditing;
     const isHighlighted = lead.id === highlightedL4LeadId;
 
-    // Dropdown HTML (disabled if assigned)
-    let selectHtml = `<select class="assign-dropdown" ${isAssigned ? "disabled" : ""}>`;
-    selectHtml += `<option value="">Select agent</option>`;
-    pickers.forEach((p) => {
-      const isSelected = lead.assignedPicker === p.id ? "selected" : "";
-      selectHtml += `<option value="${p.id}" ${isSelected}>${p.name}</option>`;
-    });
-    selectHtml += `</select>`;
+    // Autocomplete input HTML (disabled if assigned)
+    const tempSel = selectedPickerTemp[lead.id];
+    const currentSelectedId = tempSel !== undefined ? tempSel : (lead.assignedPicker || "");
+    const currentSelectedUser = pickers.find(p => p.id === currentSelectedId);
+    const currentSelectedName = currentSelectedUser ? currentSelectedUser.name : "";
+
+    let selectHtml = `
+      <div class="table-autocomplete-wrapper" style="position: relative;" data-lead-id="${lead.id}">
+        <input type="text" 
+               class="premium-input picker-search-input" 
+               value="${currentSelectedName}" 
+               placeholder="Search picker..." 
+               style="height: 32px; font-size: 0.8rem; width: 160px; margin: 0;" 
+               autocomplete="off" 
+               ${isAssigned ? "disabled" : ""} 
+               onfocus="showTablePickerDropdown('${lead.id}', this)"
+               oninput="filterTablePickerDropdown('${lead.id}', this.value)"
+        >
+        <input type="hidden" class="assign-dropdown" value="${currentSelectedId}">
+        <div class="autocomplete-dropdown table-picker-dropdown" style="display: none;"></div>
+      </div>
+    `;
 
     // Action button(s) HTML
     let actionHtml = "";
@@ -1594,6 +1737,110 @@ function loadL4Panel() {
   }
 }
 
+window.showTablePickerDropdown = function(leadId, input) {
+  const wrapper = input.closest('.table-autocomplete-wrapper');
+  const dropdown = wrapper.querySelector('.table-picker-dropdown');
+  const pickers = Api.getUsers().filter(
+    (u) => u.permissions.includes("l4_picker") && u.is_active,
+  );
+
+  const renderDropdown = (filterText = "") => {
+    dropdown.innerHTML = "";
+    const filtered = pickers.filter(p => 
+      p.name.toLowerCase().includes(filterText.toLowerCase()) || 
+      p.email.toLowerCase().includes(filterText.toLowerCase())
+    );
+
+    if (filtered.length === 0) {
+      dropdown.innerHTML = `<div class="autocomplete-item no-matches">No matching pickers found</div>`;
+      dropdown.style.display = "block";
+      return;
+    }
+
+    filtered.forEach(p => {
+      const item = document.createElement("div");
+      item.className = "autocomplete-item";
+      item.onclick = (e) => {
+        e.stopPropagation();
+        input.value = p.name;
+        const hiddenInput = wrapper.querySelector('.assign-dropdown');
+        hiddenInput.value = p.id;
+        storeTempPickerSelection(leadId, p.id);
+        dropdown.style.display = "none";
+      };
+
+      const initials = p.name ? p.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "PK";
+      item.innerHTML = `
+        <div class="autocomplete-avatar">${initials}</div>
+        <div class="autocomplete-item-details">
+          <span class="autocomplete-item-name">${p.name}</span>
+          <span class="autocomplete-item-sub">${p.email}</span>
+        </div>
+      `;
+      dropdown.appendChild(item);
+    });
+
+    dropdown.style.display = "block";
+  };
+
+  renderDropdown(input.value);
+
+  // Bind close click handler
+  const closeHandler = (e) => {
+    if (!wrapper.contains(e.target)) {
+      dropdown.style.display = "none";
+      document.removeEventListener("click", closeHandler);
+    }
+  };
+  document.addEventListener("click", closeHandler);
+};
+
+window.filterTablePickerDropdown = function(leadId, filterText) {
+  const input = document.querySelector(`.table-autocomplete-wrapper[data-lead-id="${leadId}"] .picker-search-input`);
+  if (input) {
+    const wrapper = input.closest('.table-autocomplete-wrapper');
+    const dropdown = wrapper.querySelector('.table-picker-dropdown');
+    const pickers = Api.getUsers().filter(
+      (u) => u.permissions.includes("l4_picker") && u.is_active,
+    );
+
+    dropdown.innerHTML = "";
+    const filtered = pickers.filter(p => 
+      p.name.toLowerCase().includes(filterText.toLowerCase()) || 
+      p.email.toLowerCase().includes(filterText.toLowerCase())
+    );
+
+    if (filtered.length === 0) {
+      dropdown.innerHTML = `<div class="autocomplete-item no-matches">No matching pickers found</div>`;
+      dropdown.style.display = "block";
+      return;
+    }
+
+    filtered.forEach(p => {
+      const item = document.createElement("div");
+      item.className = "autocomplete-item";
+      item.onclick = (e) => {
+        e.stopPropagation();
+        input.value = p.name;
+        const hiddenInput = wrapper.querySelector('.assign-dropdown');
+        hiddenInput.value = p.id;
+        storeTempPickerSelection(leadId, p.id);
+        dropdown.style.display = "none";
+      };
+
+      const initials = p.name ? p.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "PK";
+      item.innerHTML = `
+        <div class="autocomplete-avatar">${initials}</div>
+        <div class="autocomplete-item-details">
+          <span class="autocomplete-item-name">${p.name}</span>
+          <span class="autocomplete-item-sub">${p.email}</span>
+        </div>
+      `;
+      dropdown.appendChild(item);
+    });
+  }
+};
+
 function assignPickerFromBtn(leadId, btn) {
   const select = btn.closest("tr").querySelector(".assign-dropdown");
   if (select) {
@@ -1637,6 +1884,7 @@ async function assignPicker(leadId, pickerId) {
     "success",
   );
   changingPickerLeads.delete(leadId);
+  delete selectedPickerTemp[leadId];
   loadL4Panel();
 }
 
@@ -1909,6 +2157,14 @@ function loadAuditPanel() {
       return perms.map(p => mapping[p] || p).join(', ');
     };
 
+    // Helper to get string value safely
+    const getStringValue = (val, parsed) => {
+      if (!val) return '';
+      if (parsed && parsed.value !== undefined) return parsed.value;
+      if (parsed && typeof parsed === 'object') return ''; // don't show full JSON objects
+      return val;
+    };
+
     let detail = '';
     const action = l.action || '';
 
@@ -1931,13 +2187,29 @@ function loadAuditPanel() {
       } else {
         detail = `Created lead: ${l.newVal}`;
       }
-    } else if (action === 'LEAD_ASSIGNED') {
-      detail = l.newVal ? `Assigned to: <strong>${l.newVal}</strong>` : 'Lead assigned';
+    } else if (action === 'LEAD_ASSIGNED' || action === 'L1_AGENT_ASSIGNED') {
+      if (parsedNew && typeof parsedNew === 'object' && !parsedNew.value) {
+        const agentName = getAgentName(parsedNew.assigned_to || parsedNew.assignedTo);
+        detail = `Assigned L1 Agent: <strong>${agentName}</strong>`;
+      } else {
+        const displayVal = getStringValue(l.newVal, parsedNew);
+        detail = `Assigned L1 Agent: <strong>${displayVal}</strong>`;
+      }
+    } else if (action === 'PICKER_ASSIGNED' || action === 'L4_PICKER_ASSIGNED') {
+      if (parsedNew && typeof parsedNew === 'object' && !parsedNew.value) {
+        const pickerName = getAgentName(parsedNew.assigned_picker || parsedNew.assignedPicker);
+        detail = `Assigned Picker: <strong>${pickerName}</strong>`;
+      } else {
+        const displayVal = getStringValue(l.newVal, parsedNew);
+        detail = `Assigned Picker: <strong>${displayVal}</strong>`;
+      }
     } else if (action === 'L1_SUBMITTED' || action === 'VALUATION_SUBMITTED') {
       if (parsedNew) {
-        const agreed = parsedNew.l1Details ? (parsedNew.l1Details.agreedPrice || parsedNew.l1Details.offeredPrice || parsedNew.l1Details.recommendedPrice) : null;
-        const priceText = agreed ? ` at agreed price: ${Utils.formatCurrency(agreed)}` : '';
-        detail = `L1 physical valuation submitted${priceText}`;
+        const l1 = parsedNew.l1_details || parsedNew.l1Details || parsedNew;
+        const agreed = l1 ? (l1.agreed_price || l1.agreedPrice || l1.offered_price || l1.offeredPrice || l1.recommended_price || l1.recommendedPrice) : null;
+        const priceText = agreed ? ` &bull; Agreed Price: <strong>${Utils.formatCurrency(agreed)}</strong>` : '';
+        const kms = parsedNew.kms_driven || parsedNew.kmsDriven || (l1 && (l1.kmsDriven || l1.kms_driven)) || '—';
+        detail = `L1 physical valuation details submitted &bull; Odometer: <strong>${kms} KMs</strong>${priceText}`;
       } else {
         detail = `L1 valuation details submitted: ${l.newVal || ''}`;
       }
@@ -1948,38 +2220,90 @@ function loadAuditPanel() {
         rejected: '<span class="status-badge rejected">Rejected</span>',
         info_needed: '<span class="status-badge info_needed">Info Needed</span>'
       };
-      const comment = parsedNew && parsedNew.l2Details ? parsedNew.l2Details.managerRemarks : '';
+      const l2 = parsedNew ? (parsedNew.l2_details || parsedNew.l2Details) : null;
+      const comment = l2 ? (l2.manager_remarks || l2.managerRemarks) : '';
       const commentText = comment ? ` &bull; Remarks: "<em>${comment}</em>"` : '';
       detail = `L2 Manager marked as ${statusLabels[status] || status}${commentText}`;
-    } else if (action.startsWith('L3_')) {
-      const status = action.replace('L3_', '').toLowerCase();
+    } else if (action.startsWith('L3_') || action === 'PAYMENT_INITIATED' || action === 'PAYMENT_CONFIRMED') {
+      let status = action.replace('L3_', '').toLowerCase();
+      if (status === 'payment_initiated') status = 'payment_initiated';
+      if (status === 'payment_confirmed') status = 'payment_confirmed';
+      
       const statusLabels = {
         payment_initiated: '<span class="status-badge payment_initiated">Payment Initiated</span>',
         payment_confirmed: '<span class="status-badge approved">Payment Confirmed</span>'
       };
       let utrText = '';
-      if (parsedNew && parsedNew.l3Details) {
-        const utr = parsedNew.l3Details.utrNumber;
-        if (utr) utrText = ` &bull; UTR: <code>${utr}</code>`;
+      const l3 = parsedNew ? (parsedNew.l3_details || parsedNew.l3Details || parsedNew) : null;
+      if (l3) {
+        const utr = l3.utr_number || l3.utrNumber || (l3.paymentDetails && (l3.paymentDetails.utrNumber || l3.paymentDetails.utr_number)) || (l3.payment_details && (l3.payment_details.utrNumber || l3.payment_details.utr_number));
+        if (utr) {
+          utrText = ` &bull; UTR: <code>${utr}</code>`;
+        } else {
+          const displayVal = getStringValue(l.newVal, parsedNew);
+          if (displayVal && displayVal.includes('UTR:')) {
+            utrText = ` &bull; <code>${displayVal}</code>`;
+          }
+        }
       }
       detail = `L3 Finance marked as ${statusLabels[status] || status}${utrText}`;
-    } else if (action.startsWith('L4_')) {
-      const status = action.replace('L4_', '').toLowerCase();
+    } else if (action.startsWith('L4_') || action === 'VEHICLE_PICKED_UP' || action === 'VEHICLE_SCRAPPED') {
+      let status = action.replace('L4_', '').toLowerCase();
+      if (status === 'vehicle_picked_up') status = 'picked_up';
+      if (status === 'vehicle_scrapped') status = 'scrapped';
+      
       const statusLabels = {
         picked_up: '<span class="status-badge new">Picked Up</span>',
         scrapped: '<span class="status-badge scrapped">Scrapped</span>'
       };
-      detail = `L4 Yard marked as ${statusLabels[status] || status}`;
+      
+      let extraText = '';
+      if (parsedNew && typeof parsedNew === 'object' && !parsedNew.value) {
+        const l4 = parsedNew.l4_details || parsedNew.l4Details || parsedNew;
+        const scrap = l4.scrapDetails || l4.scrap_details || {};
+        const pickup = l4.pickupDetails || l4.pickup_details || {};
+        
+        if (status === 'scrapped') {
+          const weight = scrap.weightKg || scrap.weight_kg || '—';
+          const val = scrap.scrapValue || scrap.scrap_value || 0;
+          extraText = ` &bull; Weight: <strong>${weight}kg</strong> &bull; Value: <strong>${Utils.formatCurrency(val)}</strong>`;
+        } else if (status === 'picked_up') {
+          const proof = pickup.proofPhoto || pickup.proof_photo || 'None';
+          extraText = ` &bull; Proof: <strong>${proof}</strong>`;
+        }
+      } else {
+        const valStr = getStringValue(l.newVal, parsedNew);
+        if (valStr) extraText = ` — ${valStr}`;
+      }
+      detail = `L4 Yard marked as ${statusLabels[status] || status}${extraText}`;
     } else {
       // Fallback
       const cleanAction = action.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-      detail = `<strong>${cleanAction}</strong>${l.newVal ? ' — ' + l.newVal : ''}`;
+      const valStr = getStringValue(l.newVal, parsedNew);
+      detail = `<strong>${cleanAction}</strong>${valStr ? ' — ' + valStr : ''}`;
+    }
+
+    const diffHtml = formatAuditDiff(l.oldVal, l.newVal);
+    const hasDiff = diffHtml && !diffHtml.includes('No detail changes logged');
+
+    let detailAndDiff = `<div>${detail}</div>`;
+    if (hasDiff) {
+      const uniqueId = `audit-diff-${l.id}`;
+      detailAndDiff += `
+        <button class="action-btn" onclick="toggleAuditDiff('${uniqueId}', event)" style="margin-top: 6px; font-size: 10px; padding: 2px 6px; height: auto; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;" class="chevron-icon"><path d="m6 9 6 6 6-6"/></svg>
+          Inspect Changes
+        </button>
+        <div id="${uniqueId}" style="display: none; border-top: 1px dashed var(--border-color); margin-top: 8px; padding-top: 6px;">
+          ${diffHtml}
+        </div>
+      `;
     }
 
     tr.innerHTML = `
       <td style="color:var(--text-secondary); font-size:12px;">${new Date(l.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
       <td style="font-weight:500;">${userName}</td>
-      <td>${detail}</td>
+      <td>${detailAndDiff}</td>
       <td style="font-family:monospace; font-size:12px; color:var(--text-secondary);">${l.entityId || "—"}</td>
     `;
     tbody.appendChild(tr);
@@ -1995,6 +2319,114 @@ function loadAuditPanel() {
       loadAuditPanel();
     },
   );
+}
+
+window.toggleAuditDiff = function(id, event) {
+  event.stopPropagation();
+  const el = document.getElementById(id);
+  if (el) {
+    const isHidden = el.style.display === "none";
+    el.style.display = isHidden ? "block" : "none";
+    
+    const button = event.currentTarget;
+    if (isHidden) {
+      button.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transform: rotate(180deg); transition: transform 0.2s;" class="chevron-icon"><path d="m6 9 6 6 6-6"/></svg> Hide Changes`;
+    } else {
+      button.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transform: rotate(0deg); transition: transform 0.2s;" class="chevron-icon"><path d="m6 9 6 6 6-6"/></svg> Inspect Changes`;
+    }
+  }
+};
+
+function formatAuditDiff(oldVal, newVal) {
+  let oldObj = null;
+  let newObj = null;
+
+  try {
+    if (oldVal && typeof oldVal === 'string') oldObj = JSON.parse(oldVal);
+    else if (oldVal && typeof oldVal === 'object') oldObj = oldVal;
+  } catch (e) {}
+
+  try {
+    if (newVal && typeof newVal === 'string') newObj = JSON.parse(newVal);
+    else if (newVal && typeof newVal === 'object') newObj = newVal;
+  } catch (e) {}
+
+  const keysToSkip = [
+    'password_hash',
+    'password',
+    'created_at',
+    'id',
+    'token',
+    'assigned_to',
+    'submitted_by',
+    'l1_details',
+    'l2_details',
+    'l3_details',
+    'l4_details'
+  ];
+
+  const formatValue = (v) => {
+    if (v === null || v === undefined) return '—';
+    if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+    if (Array.isArray(v)) return v.length > 0 ? `[${v.join(', ')}]` : 'None';
+    if (typeof v === 'object') return JSON.stringify(v);
+    return v;
+  };
+
+  // If both are objects, compute and format diff
+  if (oldObj && newObj && typeof oldObj === 'object' && typeof newObj === 'object') {
+    const diffs = [];
+    const allKeys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);
+
+    for (const key of allKeys) {
+      if (keysToSkip.includes(key)) continue;
+
+      const oldRaw = oldObj[key];
+      const newRaw = newObj[key];
+
+      const oldValStr = formatValue(oldRaw);
+      const newValStr = formatValue(newRaw);
+
+      if (oldValStr !== newValStr) {
+        const prettyKey = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        if (oldRaw === undefined) {
+          diffs.push(`<li><span class="diff-key">${prettyKey}:</span> <span class="diff-added">+ ${newValStr}</span></li>`);
+        } else if (newRaw === undefined) {
+          diffs.push(`<li><span class="diff-key">${prettyKey}:</span> <span class="diff-removed">- ${oldValStr}</span></li>`);
+        } else {
+          diffs.push(`<li><span class="diff-key">${prettyKey}:</span> <span class="diff-changed">${oldValStr} ➔ ${newValStr}</span></li>`);
+        }
+      }
+    }
+
+    if (diffs.length > 0) {
+      return `<ul class="audit-diff-list">${diffs.join('')}</ul>`;
+    }
+  }
+
+  // Fallback: If only newVal is present (creation/enrolment)
+  if (newObj && typeof newObj === 'object') {
+    const details = [];
+    for (const [key, val] of Object.entries(newObj)) {
+      if (keysToSkip.includes(key)) continue;
+      const prettyKey = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const valStr = formatValue(val);
+      if (valStr !== undefined && valStr !== '—' && valStr !== '') {
+        details.push(`<li><span class="diff-key">${prettyKey}:</span> <span>${valStr}</span></li>`);
+      }
+    }
+    if (details.length > 0) {
+      return `<ul class="audit-diff-list">${details.join('')}</ul>`;
+    }
+  }
+
+  // Fallback if raw text
+  if (typeof newVal === 'string' && newVal.trim() !== '') {
+    if (!(newVal.startsWith('{') || newVal.startsWith('['))) {
+      return `<div class="audit-diff-text">${newVal}</div>`;
+    }
+  }
+  return '<div style="color:var(--text-secondary); font-size:11px; padding: 2px 0;">No detail changes logged.</div>';
 }
 
 // ──────────────────────────────────────────────
@@ -2701,6 +3133,7 @@ function handleReceiptFileSelected(event) {
 // FINALIZED CARS PANEL
 // ──────────────────────────────────────────────
 function showFinalizedTableView() {
+  selectedFinalizedLeadId = null;
   document.getElementById("finalized-table-view").style.display = "block";
   document.getElementById("finalized-detail-view").style.display = "none";
 }
@@ -2718,6 +3151,7 @@ function getFileUrl(file) {
 }
 
 function viewFinalizedLead(leadId) {
+  selectedFinalizedLeadId = leadId;
   document.getElementById("finalized-table-view").style.display = "none";
   document.getElementById("finalized-detail-view").style.display = "block";
 
@@ -2739,6 +3173,7 @@ function viewFinalizedLead(leadId) {
   // Left Information
   document.getElementById("fin-info-model").innerText =
     `${lead.make || ""} ${lead.model}`;
+  document.getElementById("fin-info-reg").innerText = lead.vehicleNumber || "-";
   document.getElementById("fin-info-year").innerText =
     lead.year || l1.year || "-";
   document.getElementById("fin-info-fuel").innerText =
@@ -2748,12 +3183,16 @@ function viewFinalizedLead(leadId) {
     : l1.kmsDriven
       ? l1.kmsDriven.toLocaleString("en-IN")
       : "-";
+  document.getElementById("fin-info-colour").innerText = lead.colour || l1.colour || "-";
+  document.getElementById("fin-info-engine").innerText = l1.engineNumber || "-";
   document.getElementById("fin-info-chassis").innerText =
     l1.chassisNumber || "-";
 
   // Right Information
   document.getElementById("fin-info-owner").innerText = lead.ownerName || "-";
   document.getElementById("fin-info-phone").innerText = lead.phone || "-";
+  document.getElementById("fin-info-email").innerText = lead.email || l1.ownerEmail || "-";
+  document.getElementById("fin-info-address").innerText = lead.address || l1.ownerAddress || "-";
   document.getElementById("fin-info-method").innerText =
     l1.paymentMode || "NEFT";
   document.getElementById("fin-info-utr").innerText =
@@ -2762,6 +3201,27 @@ function viewFinalizedLead(leadId) {
     paymentDetails.confirmedAt
       ? new Date(paymentDetails.confirmedAt).toLocaleDateString("en-IN")
       : "-";
+
+  const payMode = l1.paymentMode || "bank";
+  const payDetails = l1.paymentDetails || l1.bankDetails || {};
+  const payoutRow = document.getElementById("fin-info-payout-details-row");
+  const payoutDetails = document.getElementById("fin-info-payout-details");
+
+  if (payoutRow && payoutDetails) {
+    if (payMode === "upi") {
+      payoutRow.style.display = "flex";
+      payoutDetails.innerText = `UPI ID: ${payDetails.upiId || "-"}`;
+    } else if (payMode === "bank") {
+      payoutRow.style.display = "flex";
+      payoutDetails.innerText = `Holder: ${payDetails.accountHolder || lead.ownerName || "-"}\nBank: ${payDetails.bankName || "-"}\nA/C: ${payDetails.accountNumber || "-"}\nIFSC: ${payDetails.ifscCode || "-"}`;
+    } else if (payMode === "cash") {
+      payoutRow.style.display = "flex";
+      payoutDetails.innerText = `Cash Handover Confirmed`;
+    } else {
+      payoutRow.style.display = "none";
+      payoutDetails.innerText = "—";
+    }
+  }
 
   // Vahan details
   document.getElementById("fin-vahan-fitness").innerText = (
@@ -2869,7 +3329,7 @@ function viewFinalizedLead(leadId) {
   const scrap = lead.scrapDetails || {};
   const pickerScrapperBox = document.getElementById("fin-picker-scrapper-box");
 
-  if (lead.status === "scrapped" || lead.status === "payment_confirmed") {
+  if (lead.status === "scrapped" || lead.status === "payment_confirmed" || lead.status === "picked_up") {
     pickerScrapperBox.style.display = "block";
 
     // Picker details
@@ -2891,6 +3351,18 @@ function viewFinalizedLead(leadId) {
     document.getElementById("fin-pick-proof").innerHTML = pickup.proofPhoto
       ? `<a href="${proofUrl}" target="_blank" style="color:var(--primary-color); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">${pickup.proofPhoto} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`
       : "—";
+
+    const sigRow = document.getElementById("fin-pick-sig-row");
+    const sigImg = document.getElementById("fin-pick-sig-img");
+    if (sigRow && sigImg) {
+      if (pickup.signature) {
+        sigRow.style.display = "flex";
+        sigImg.src = pickup.signature;
+      } else {
+        sigRow.style.display = "none";
+        sigImg.src = "";
+      }
+    }
 
     // Scrapper details
     if (lead.status === "scrapped") {
@@ -2930,9 +3402,9 @@ function loadFinalizedPanel() {
     .trim();
   const filterVal = document.getElementById("finalized-filter").value;
 
-  // Filter finalized cars: those that are payment_confirmed or scrapped
+  // Filter finalized cars: those that are payment_confirmed, picked_up, or scrapped
   let filtered = leads.filter(
-    (l) => l.status === "payment_confirmed" || l.status === "scrapped",
+    (l) => l.status === "payment_confirmed" || l.status === "picked_up" || l.status === "scrapped",
   );
 
   if (filterVal !== "all") {
@@ -2969,6 +3441,10 @@ function loadFinalizedPanel() {
     const paymentDetails = lead.paymentDetails || {};
     const agreedAmount = paymentDetails.amount || lead.expectedPrice;
 
+    let statusLabel = "Paid";
+    if (lead.status === "picked_up") statusLabel = "Picked Up";
+    else if (lead.status === "scrapped") statusLabel = "Scrapped";
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td style="font-family:monospace; font-size:12px; color:var(--text-secondary);">#${lead.id.split("-")[1]}</td>
@@ -2976,7 +3452,7 @@ function loadFinalizedPanel() {
       <td>${lead.make || ""} ${lead.model}</td>
       <td style="font-family:monospace; font-weight:600;">${lead.vehicleNumber}</td>
       <td>${Utils.formatCurrency(agreedAmount)}</td>
-      <td><span class="status-badge ${lead.status}">${lead.status === "payment_confirmed" ? "Paid" : "Scrapped"}</span></td>
+      <td><span class="status-badge ${lead.status}">${statusLabel}</span></td>
       <td><button class="action-btn" onclick="viewFinalizedLead('${lead.id}')">View</button></td>
     `;
     tbody.appendChild(tr);
@@ -3021,6 +3497,22 @@ function downloadFinalizedVehiclePDF(leadId) {
   const condEngine = l1.engineCondition || "—";
   const condTyre = l1.tyreCondition || "—";
   const accidentHist = l1.accidentHistory || "None logged";
+
+  const payMode = l1.paymentMode || "bank";
+  const payDetails = l1.paymentDetails || l1.bankDetails || {};
+  let payoutHtml = "";
+  if (payMode === "upi") {
+    payoutHtml = `<div class="row"><span>UPI ID</span><strong>${payDetails.upiId || "—"}</strong></div>`;
+  } else if (payMode === "bank") {
+    payoutHtml = `
+      <div class="row"><span>A/C Holder</span><strong>${payDetails.accountHolder || lead.ownerName || "—"}</strong></div>
+      <div class="row"><span>Bank Name</span><strong>${payDetails.bankName || "—"}</strong></div>
+      <div class="row"><span>Account No</span><strong>${payDetails.accountNumber || "—"}</strong></div>
+      <div class="row"><span>IFSC Code</span><strong>${payDetails.ifscCode || "—"}</strong></div>
+    `;
+  } else if (payMode === "cash") {
+    payoutHtml = `<div class="row"><span>Payout Info</span><strong>Cash Handover Confirmed</strong></div>`;
+  }
 
   // Accessories
   const options = lead.optionsPresent || l1.optionsPresent || [];
@@ -3084,7 +3576,7 @@ function downloadFinalizedVehiclePDF(leadId) {
 
   // Operations Logs
   let operationsHtml = "";
-  if (lead.status === "scrapped" || lead.status === "payment_confirmed") {
+  if (lead.status === "scrapped" || lead.status === "payment_confirmed" || lead.status === "picked_up") {
     const pickup = lead.pickupDetails || {};
     const scrap = lead.scrapDetails || {};
     const pickerUser = pickup.pickedBy
@@ -3102,6 +3594,9 @@ function downloadFinalizedVehiclePDF(leadId) {
     const pickProof = pickup.proofPhoto
       ? `<a href="${getFileUrl(pickup.proofPhoto)}" target="_blank" style="color:#0ea5e9; text-decoration:none;">${pickup.proofPhoto} ↗</a>`
       : "—";
+    const pickSig = pickup.signature
+      ? `<img src="${pickup.signature}" alt="Seller Signature" style="max-height:36px; vertical-align:middle; border:1px solid #e5e7eb; border-radius:4px; padding:2px; background:#fff;" />`
+      : "—";
 
     operationsHtml = `
       <div class="card full-width" style="margin-top: 20px;">
@@ -3112,6 +3607,7 @@ function downloadFinalizedVehiclePDF(leadId) {
             <div class="row"><span>Assigned Picker</span><strong>${pickerName}</strong></div>
             <div class="row"><span>Collection Date</span><strong>${pickDate}</strong></div>
             <div class="row"><span>Handover Proof</span><strong>${pickProof}</strong></div>
+            <div class="row"><span>Seller Signature</span><strong>${pickSig}</strong></div>
           </div>
           <div>
             <h4 style="margin: 0 0 10px 0; font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Scrapper Dismantling</h4>
@@ -3185,6 +3681,7 @@ function downloadFinalizedVehiclePDF(leadId) {
             <div class="row"><span>Email</span><strong>${ownerEmail}</strong></div>
             <div class="row"><span>Address</span><strong>${ownerAddress}</strong></div>
             <div class="row"><span>Payment Method</span><strong>${l1.paymentMode || "NEFT"}</strong></div>
+            ${payoutHtml}
             <div class="row"><span>UTR / Ref ID</span><strong>${paymentDetails.utrNumber || "—"}</strong></div>
             <div class="row"><span>Transaction Date</span><strong>${paymentDetails.confirmedAt ? new Date(paymentDetails.confirmedAt).toLocaleDateString("en-IN") : "—"}</strong></div>
             <div class="row"><span>Status</span><strong>${lead.status.toUpperCase().replace("_", " ")}</strong></div>
@@ -3265,6 +3762,7 @@ function openCreateLeadModal() {
   document.getElementById("create-lead-owner-name").value = "";
   document.getElementById("create-lead-phone").value = "";
   document.getElementById("create-lead-alt-phone").value = "";
+  document.getElementById("create-lead-address").value = "";
   document.getElementById("create-lead-vehicle-no").value = "";
   document.getElementById("create-lead-make").value = "";
   document.getElementById("create-lead-model").value = "";
@@ -3286,6 +3784,7 @@ async function handleCreateLeadSubmit() {
   const ownerName = document.getElementById("create-lead-owner-name").value.trim();
   const phone = document.getElementById("create-lead-phone").value.trim();
   const altPhone = document.getElementById("create-lead-alt-phone").value.trim();
+  const address = document.getElementById("create-lead-address").value.trim();
   const vehicleNumber = document.getElementById("create-lead-vehicle-no").value.trim();
   const make = document.getElementById("create-lead-make").value.trim();
   const model = document.getElementById("create-lead-model").value.trim();
@@ -3305,6 +3804,7 @@ async function handleCreateLeadSubmit() {
     ownerName,
     phone,
     altPhone,
+    address,
     vehicleNumber,
     make,
     model,

@@ -444,7 +444,7 @@
       position: absolute;
       bottom: 8px;
       right: 8px;
-      background-color: rgba(0, 0, 0, 0.5);
+      background-color: rgb(209 209 209 / 50%);
       border: 1px solid rgba(255, 255, 255, 0.08);
       color: var(--text-secondary);
       font-size: 0.7rem;
@@ -642,6 +642,12 @@
     .ntf-item:hover {
       background: var(--surface-variant);
     }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
   </style>
 </head>
 
@@ -674,18 +680,21 @@
     <div class="emp-topbar-actions">
       <button class="theme-toggle-btn emp-icon-btn" aria-label="Toggle Theme"
         style="border-color: var(--border-color);"></button>
-      
+
       <!-- Notifications Bell -->
       <div style="position:relative;">
-        <button class="emp-icon-btn" aria-label="Notifications" onclick="toggleNtfDropdown(event)" style="position:relative;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button class="emp-icon-btn" aria-label="Notifications" onclick="toggleNtfDropdown(event)"
+          style="position:relative;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
           <span class="notif-dot" id="notification-dot" style="display:none;"></span>
         </button>
         <div class="ntf-dropdown" id="notification-dropdown" onclick="event.stopPropagation()">
-          <div style="padding:12px 16px; font-weight:500; font-size:0.85rem; border-bottom:1px solid var(--border-color);">
+          <div
+            style="padding:12px 16px; font-weight:500; font-size:0.85rem; border-bottom:1px solid var(--border-color);">
             <span>Notifications</span>
           </div>
           <div id="notification-list-box" style="max-height:280px; overflow-y:auto;"></div>
@@ -739,11 +748,11 @@
       <div class="section-header">
         <div class="section-header-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
-            <polyline points="10 9 9 9 8 9"/>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
           </svg>
         </div>
         <div>
@@ -753,11 +762,12 @@
       </div>
 
       <!-- L1 Queue -->
-      <div id="l1-queue-container" style="margin-bottom:20px;">
+      <div id="l1-queue-container" style="margin-bottom:20px; max-height:240px; overflow-y:auto; padding-right:4px;">
         <div id="l1-queue" style="display:flex; flex-direction:column; gap:8px;"></div>
       </div>
 
-      <div id="l1-form-empty" class="premium-card" style="padding:32px 24px; text-align:center; color:var(--text-secondary); margin-bottom:20px;">
+      <div id="l1-form-empty" class="premium-card"
+        style="padding:32px 24px; text-align:center; color:var(--text-secondary); margin-bottom:20px;">
         <p style="font-size:0.9rem;">Select an assigned lead above or click "Create New Valuation" to get started.</p>
       </div>
 
@@ -826,7 +836,7 @@
                 <option value="Petrol">Petrol</option>
                 <option value="Diesel">Diesel</option>
                 <option value="CNG">CNG</option>
-                <option value="LPG">LPG</option>
+                <option value="CNG+Petrol">CNG+Petrol</option>
                 <option value="Electric">Electric</option>
                 <option value="Hybrid">Hybrid</option>
               </select>
@@ -1140,8 +1150,8 @@
               </div>
               <div class="md-field-group">
                 <span class="input-label">IFSC Code</span>
-                <input type="text" id="l1-bank-ifsc" class="premium-input" style="height:44px; text-transform:uppercase;"
-                  placeholder="e.g. HDFC0001234">
+                <input type="text" id="l1-bank-ifsc" class="premium-input"
+                  style="height:44px; text-transform:uppercase;" placeholder="e.g. HDFC0001234">
               </div>
             </div>
           </div>
@@ -1198,7 +1208,9 @@
 
       <!-- Queue list -->
       <div id="picker-queue-list" style="display:none;">
-        <div id="picker-queue"></div>
+        <div id="picker-queue"
+          style="max-height:240px; overflow-y:auto; padding-right:4px; display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+        </div>
 
         <!-- Detail card -->
         <div class="premium-card" id="picker-detail-card" style="display:none; padding:20px; margin-top:16px;">
@@ -1214,44 +1226,148 @@
               style="height:32px; border-radius:var(--border-radius-sm); padding:0 12px; font-size:0.75rem;"
               onclick="triggerCallShort()">Call Seller</button>
           </div>
-          <div style="margin-bottom:16px; font-size:0.85rem; line-height:1.6;">
-            <p><strong>Seller:</strong> <span id="pick-owner-name">Rajesh Khanna</span></p>
-            <p><strong>Mobile:</strong> <a id="pick-owner-phone-link" href="tel:">9876543210</a></p>
-          </div>
-          <a id="pick-maps-btn" target="_blank" class="premium-btn premium-btn-secondary"
-            style="width:100%; height:38px; font-size:0.8rem; border-radius:var(--border-radius-md); margin-bottom:20px; display:flex; align-items:center; justify-content:center; gap:6px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            Open Google Maps Navigation
-          </a>
-          <div style="margin-bottom:20px;">
-            <span class="input-label" style="display:block; margin-bottom:6px;">Pickup Proof Photo</span>
-            <div class="file-upload-card" id="card-pickup-proof" onclick="triggerMockUpload('pickup-proof')"
-              style="padding:20px;">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
-                stroke-width="1.8" style="margin-bottom:4px;">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-              <span style="display:block; font-size:0.75rem; font-weight:600;" id="label-pickup-proof">Take Delivery
-                Proof Photo</span>
-              <span style="font-size:0.65rem; color:var(--text-secondary);" id="status-pickup-proof">Click to snap
-                photo</span>
+
+          <!-- Necessary Pickup Details -->
+          <div style="margin-bottom:16px; font-size:0.85rem; line-height:1.6; display: grid; gap: 8px;">
+            <div><strong>Name:</strong> <span id="pick-owner-name">—</span></div>
+            <div><strong>Phone No:</strong> <a id="pick-owner-phone-link" href="tel:"
+                style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">—</a></div>
+            <div><strong>Address:</strong> <span id="pick-owner-address">—</span></div>
+
+            <!-- Google Map Iframe -->
+            <div id="pick-map-container"
+              style="margin-top: 8px; height: 180px; width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);">
+              <iframe id="pick-map-iframe" width="100%" height="100%" style="border:0;" loading="lazy" src=""></iframe>
             </div>
           </div>
-          <div style="margin-bottom:24px;">
-            <span class="input-label" style="display:block; margin-bottom:6px;">Seller Digital Signature</span>
-            <div class="canvas-border">
-              <canvas id="sig-canvas"></canvas>
-              <button type="button" class="canvas-clear-btn" onclick="clearSigCanvas()">Clear signature</button>
+
+          <!-- More Details Trigger Section -->
+          <div style="margin-bottom: 20px;">
+            <button id="pick-more-details-btn" class="premium-btn premium-btn-secondary"
+              style="width:100%; height:36px; font-size:0.8rem; border-radius:var(--border-radius-md);"
+              onclick="loadPickerMoreDetails()">
+              More Details
+            </button>
+
+            <div id="pick-more-details-loading"
+              style="display:none; text-align:center; padding:12px; font-size:0.8rem; color:var(--text-secondary);">
+              <span class="loading-spinner"
+                style="display:inline-block; width:16px; height:16px; border:2px solid var(--primary-color); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite; margin-right:8px; vertical-align:middle;"></span>
+              Loading details from server...
             </div>
-            <p style="font-size:0.75rem; color:var(--text-secondary);">Draw seller's handover signature using finger or
-              stylus.</p>
           </div>
-          <button class="premium-btn premium-btn-primary" style="width:100%;" onclick="handleConfirmCollection()">Verify
-            Handover & Complete Pickup</button>
+
+          <!-- Extended Info Container (loaded asynchronously) -->
+          <div id="pick-extended-details"
+            style="display:none; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; margin-bottom: 20px;">
+
+            <!-- Vehicle Specs -->
+            <div style="margin-bottom:16px; font-size:0.82rem; line-height:1.5;">
+              <h4 style="font-size:0.9rem; font-weight:600; color:var(--primary-color); margin-bottom:8px;">Vehicle
+                Specifications</h4>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 12px;">
+                <div><strong>Year:</strong> <span id="pick-veh-year">—</span></div>
+                <div><strong>Colour:</strong> <span id="pick-veh-colour">—</span></div>
+                <div><strong>Fuel Type:</strong> <span id="pick-veh-fuel">—</span></div>
+                <div><strong>KMs Driven:</strong> <span id="pick-veh-kms">—</span></div>
+                <div style="grid-column:span 2;"><strong>Engine No:</strong> <span id="pick-veh-engine-no">—</span>
+                </div>
+                <div style="grid-column:span 2;"><strong>Chassis No:</strong> <span id="pick-veh-chassis-no">—</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Price & Payment -->
+            <div
+              style="margin-bottom:16px; font-size:0.82rem; line-height:1.5; border-top:1px dashed var(--border-color); padding-top:12px;">
+              <h4 style="font-size:0.9rem; font-weight:600; color:var(--primary-color); margin-bottom:8px;">Agreed
+                Payout & Payment</h4>
+              <div style="display:grid; gap:4px;">
+                <div><strong>Price Amount:</strong> <span id="pick-agreed-price"
+                    style="font-weight:700; color:var(--success-color);">—</span></div>
+                <div><strong>Payment Mode:</strong> <span id="pick-payment-mode" style="font-weight:600;">—</span></div>
+                <div id="pick-payment-details-container"
+                  style="background:var(--surface-variant); padding:8px; border-radius:6px; font-family:monospace; font-size:0.75rem; margin-top:4px; display:none;">
+                </div>
+              </div>
+            </div>
+
+            <!-- Condition ratings -->
+            <div
+              style="margin-bottom:16px; font-size:0.82rem; line-height:1.5; border-top:1px dashed var(--border-color); padding-top:12px;">
+              <h4 style="font-size:0.9rem; font-weight:600; color:var(--primary-color); margin-bottom:8px;">Valuation &
+                Condition</h4>
+              <div style="display:grid; gap:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span><strong>Body Rating:</strong></span>
+                  <span id="pick-cond-body" class="premium-badge md-badge-approved">—</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span><strong>Engine Rating:</strong></span>
+                  <span id="pick-cond-engine" class="premium-badge md-badge-approved">—</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span><strong>Tyre Rating:</strong></span>
+                  <span id="pick-cond-tyre" class="premium-badge md-badge-approved">—</span>
+                </div>
+                <div style="margin-top:4px;">
+                  <strong>Missing Parts:</strong>
+                  <div id="pick-missing-parts" style="margin-top:4px; display:flex; flex-wrap:wrap; gap:4px;"></div>
+                </div>
+                <div><strong>Accident Remarks:</strong> <span id="pick-remarks">—</span></div>
+              </div>
+            </div>
+
+            <!-- KYC Docs and Photos -->
+            <div
+              style="font-size:0.82rem; line-height:1.5; border-top:1px dashed var(--border-color); padding-top:12px;">
+              <h4 style="font-size:0.9rem; font-weight:600; color:var(--primary-color); margin-bottom:8px;">Documents &
+                Media</h4>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div>
+                  <strong>KYC Documents:</strong>
+                  <ul id="pick-kyc-docs-list" style="margin-top:4px; padding-left:14px; margin-bottom:0;"></ul>
+                </div>
+                <div>
+                  <strong>Photos:</strong>
+                  <div id="pick-photos-gallery" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Pickup Proof & Digital Signature (Handover validation) -->
+          <div style="border-top:1px solid var(--border-color); padding-top:16px; margin-top:16px;">
+            <div style="margin-bottom:20px;">
+              <span class="input-label" style="display:block; margin-bottom:6px;">Pickup Proof Photo</span>
+              <div class="file-upload-card" id="card-pickup-proof" onclick="triggerMockUpload('pickup-proof')"
+                style="padding:20px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)"
+                  stroke-width="1.8" style="margin-bottom:4px;">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+                <span style="display:block; font-size:0.75rem; font-weight:600;" id="label-pickup-proof">Take Delivery
+                  Proof Photo</span>
+                <span style="font-size:0.65rem; color:var(--text-secondary);" id="status-pickup-proof">Click to snap
+                  photo</span>
+              </div>
+            </div>
+            <div style="margin-bottom:24px;">
+              <span class="input-label" style="display:block; margin-bottom:6px;">Seller Digital Signature</span>
+              <div class="canvas-border">
+                <canvas id="sig-canvas"></canvas>
+                <button type="button" class="canvas-clear-btn" onclick="clearSigCanvas()">Clear signature</button>
+              </div>
+              <p style="font-size:0.75rem; color:var(--text-secondary);">Draw seller's handover signature using finger
+                or
+                stylus.</p>
+            </div>
+            <button class="premium-btn premium-btn-primary" style="width:100%;"
+              onclick="handleConfirmCollection()">Verify
+              Handover & Complete Pickup</button>
+          </div>
         </div>
       </div>
 
@@ -1266,7 +1382,8 @@
       <div class="section-header">
         <div class="section-header-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 12H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+            <path
+              d="M22 12H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
           </svg>
         </div>
         <div>
@@ -1290,25 +1407,31 @@
 
       <!-- Workspace layout -->
       <div id="scrapper-workspace-split" style="display:grid; grid-template-columns:1fr; gap:16px;">
-        <div id="scrapper-queue"></div>
+        <div id="scrapper-queue"
+          style="max-height:240px; overflow-y:auto; padding-right:4px; display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+        </div>
 
         <!-- Detail card -->
         <div class="premium-card" id="scrapper-detail-card" style="display:none; padding:20px; margin-top:16px;">
           <div style="border-bottom:1px solid var(--border-color); padding-bottom:14px; margin-bottom:16px;">
-            <h3 id="scrap-car-model" style="font-size:1.15rem; font-weight:700; color:var(--primary-color);">Vehicle Model</h3>
+            <h3 id="scrap-car-model" style="font-size:1.15rem; font-weight:700; color:var(--primary-color);">Vehicle
+              Model</h3>
             <span id="scrap-reg-no" class="premium-badge md-badge-approved"
               style="font-family:monospace; font-size:0.8rem; margin-top:4px;">REG_NO</span>
           </div>
 
-          <div style="margin-bottom:20px; font-size:0.85rem; line-height:1.6; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div
+            style="margin-bottom:20px; font-size:0.85rem; line-height:1.6; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
             <div><strong>Engine No:</strong> <span id="scrap-engine-val">ENG-MOCK</span></div>
             <div><strong>Chassis No:</strong> <span id="scrap-chassis-val">CHA-MOCK</span></div>
-            <div style="grid-column: span 2;"><strong>Accident Remarks:</strong> <span id="scrap-accident-val">None</span></div>
+            <div style="grid-column: span 2;"><strong>Accident Remarks:</strong> <span
+                id="scrap-accident-val">None</span></div>
           </div>
 
           <!-- Intact accessories checklist -->
           <div style="margin-bottom:20px;">
-            <span class="input-label" style="display:block; margin-bottom:10px;">Select Salvaged Parts (to recover)</span>
+            <span class="input-label" style="display:block; margin-bottom:10px;">Select Salvaged Parts (to
+              recover)</span>
             <div id="scrap-accessories-pills" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
           </div>
 
@@ -1316,15 +1439,18 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px;">
             <div class="md-field-group">
               <span class="input-label">Dry Metal Weight (kg)</span>
-              <input type="number" id="scrap-metal-weight" class="premium-input" style="height:44px;" required placeholder="e.g. 950">
+              <input type="number" id="scrap-metal-weight" class="premium-input" style="height:44px;" required
+                placeholder="e.g. 950">
             </div>
             <div class="md-field-group">
               <span class="input-label">Realized Scrap Value (₹)</span>
-              <input type="number" id="scrap-value-realized" class="premium-input" style="height:44px;" required placeholder="e.g. 18000">
+              <input type="number" id="scrap-value-realized" class="premium-input" style="height:44px;" required
+                placeholder="e.g. 18000">
             </div>
           </div>
 
-          <button class="premium-btn premium-btn-primary" style="width:100%;" onclick="handleCompleteScrapping()">Complete Scrapping & Close Lot</button>
+          <button class="premium-btn premium-btn-primary" style="width:100%;"
+            onclick="handleCompleteScrapping()">Complete Scrapping & Close Lot</button>
         </div>
       </div>
 
@@ -1376,6 +1502,7 @@
   <script src="../js/auth.js?v=2"></script>
   <script src="../js/utils.js?v=2"></script>
   <script src="employee.js?v=2"></script>
+  <script src="../js/socket-client.js"></script>
 </body>
 
 </html>
