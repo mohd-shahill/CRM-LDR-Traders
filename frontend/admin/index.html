@@ -7,9 +7,21 @@
   <script>
     (function () {
       try {
-        var session = sessionStorage.getItem('rvsf_session_user');
-        if (!session) { window.location.replace('login.html'); }
-      } catch (e) { window.location.replace('login.html'); }
+        var sessionJson = sessionStorage.getItem('rvsf_session_user');
+        if (!sessionJson) {
+          window.location.replace('login.html');
+          return;
+        }
+        var user = JSON.parse(sessionJson);
+        var permissions = user.permissions || [];
+        var isSuperAdmin = user.is_super_admin || permissions.includes('super_admin');
+        var hasAdminAccess = isSuperAdmin || permissions.includes('l2') || permissions.includes('l3') || permissions.includes('l1_admin') || permissions.includes('l4_picker_admin');
+        if (!hasAdminAccess) {
+          window.location.replace('login.html');
+        }
+      } catch (e) {
+        window.location.replace('login.html');
+      }
     })();
   </script>
   <title>Admin Dashboard — RVSF - LDR TRADERS</title>
@@ -381,6 +393,14 @@
       background: var(--surface-color);
       border: 1px solid var(--border-color);
       border-radius: var(--border-radius-lg);
+      overflow: hidden;
+    }
+
+    #panel-audit .table-wrap {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: calc(100vh - 140px);
     }
 
     .admin-table {
@@ -638,7 +658,7 @@
       display: none;
       align-items: center;
       justify-content: center;
-      z-index: 1000;
+      z-index: 1100;
       backdrop-filter: blur(4px);
     }
 
@@ -988,7 +1008,6 @@
                   <th>Lead ID</th>
                   <th>Owner</th>
                   <th>Vehicle</th>
-                  <th>Expected</th>
                   <th>Status</th>
                   <th>Assigned to</th>
                   <th>Action</th>
@@ -1105,12 +1124,18 @@
               </div>
 
               <!-- Vahan Verification Report -->
-              <div class="vahan-box" style="margin-bottom:20px; border-color:var(--primary-color);">
+              <div class="vahan-box"
+                style="margin-bottom:20px; border: 2px solid var(--primary-color); background: rgba(14,165,233,0.05); box-shadow: 0 4px 15px rgba(14,165,233,0.15);">
                 <h4 class="section-box-title"
-                  style="color:var(--primary-color); display:flex; justify-content:space-between; align-items:center;">
-                  <span>Vahan Verification Report</span>
-                  <button class="action-btn" onclick="openEditVahanDialog()"
-                    style="font-size: 0.75rem; padding: 2px 8px; font-weight: 500; height: auto; margin: 0; line-height: 1.2;">Edit</button>
+                  style="color:var(--primary-color); display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid rgba(14,165,233,0.2); padding-bottom:12px; margin-bottom:12px;">
+                  <span style="display: flex; align-items: center; gap: 6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    Vahan Verification Report
+                  </span>
+                  <button class="premium-btn premium-btn-primary" onclick="openEditVahanDialog()"
+                    style="font-size: 0.8rem; padding: 4px 16px; height: auto; border-radius: 6px;">Fill / Edit</button>
                 </h4>
                 <div class="vahan-row"><span>Insurance Fitness</span><strong id="vahan-fitness" class="keep-color"
                     style="color:var(--success-color);">Active</strong></div>
@@ -1230,7 +1255,7 @@
                 style="border-top:1px solid var(--border-color); padding-top:20px; display:flex; justify-content:space-between; align-items:center; gap:16px;">
                 <button class="premium-btn premium-btn-secondary"
                   style="border-color:var(--error-color); color:var(--error-color);" onclick="openRejectDialog()">Reject
-                  Lot</button>
+                  Lead</button>
                 <button class="premium-btn premium-btn-primary" onclick="handleL2Approve()">Approve purchase</button>
               </div>
             </div>
@@ -1283,13 +1308,20 @@
 
           <!-- Detail View (drill-in) -->
           <div id="l3-detail-view" style="display:none;">
-            <button class="detail-back-btn" onclick="showL3TableView()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 12H5" />
-                <path d="M12 19l-7-7 7-7" />
-              </svg>
-              Back to list
-            </button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <button class="detail-back-btn" onclick="showL3TableView()" style="margin-bottom: 0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 12H5" />
+                  <path d="M12 19l-7-7 7-7" />
+                </svg>
+                Back to list
+              </button>
+              <button id="l3-reject-btn" class="premium-btn"
+                style="background-color: var(--error-color); color: #fff; border: none; height: 36px; padding: 0 16px; font-size: 0.8rem;"
+                onclick="openL3LeadRejectDialog()">
+                Reject / Cancel Lead
+              </button>
+            </div>
             <div class="detail-card">
               <!-- Header -->
               <div
@@ -1665,17 +1697,19 @@
             <div class="section-title-sm">Audit log</div>
           </div>
           <div class="table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>User</th>
-                  <th>Action</th>
-                  <th>Lead</th>
-                </tr>
-              </thead>
-              <tbody id="audit-table-body"></tbody>
-            </table>
+            <div style="flex: 1; overflow-y: auto; border-top-left-radius: inherit; border-top-right-radius: inherit;">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Lead</th>
+                  </tr>
+                </thead>
+                <tbody id="audit-table-body"></tbody>
+              </table>
+            </div>
             <div class="pagination-bar" id="pagination-audit" style="display:none;"></div>
           </div>
         </div>
@@ -1793,6 +1827,16 @@
         </div>
 
         <!-- Assignment Section -->
+        <div id="lead-detail-media-section">
+          <h4
+            style="margin: 0 0 10px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
+            Uploaded Photos</h4>
+          <div id="lead-detail-media-gallery"
+            style="display: flex; flex-wrap: wrap; gap: 8px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+          </div>
+        </div>
+
+        <!-- Assignment Section -->
         <div id="lead-detail-assignment-section">
           <h4
             style="margin: 0 0 10px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
@@ -1815,8 +1859,11 @@
     </div>
 
     <div class="drawer-footer" style="display: flex; justify-content: space-between; width: 100%;">
-      <button id="lead-detail-reject-btn" class="premium-btn" style="background-color: var(--error-color); color: #fff; border: none; height: 38px; padding: 0 16px; font-size: 0.8rem;" onclick="openLeadDetailRejectDialog()">Reject / Cancel Lead</button>
-      <button class="premium-btn premium-btn-secondary" style="height: 38px; padding: 0 16px; font-size: 0.8rem;" onclick="closeLeadDetailModal()">Close</button>
+      <button id="lead-detail-reject-btn" class="premium-btn"
+        style="background-color: var(--error-color); color: #fff; border: none; height: 38px; padding: 0 16px; font-size: 0.8rem;"
+        onclick="openLeadDetailRejectDialog()">Reject / Cancel Lead</button>
+      <button class="premium-btn premium-btn-secondary" style="height: 38px; padding: 0 16px; font-size: 0.8rem;"
+        onclick="closeLeadDetailModal()">Close</button>
     </div>
   </div>
 
@@ -1828,7 +1875,7 @@
       <div class="input-wrapper" style="margin-bottom:24px;">
         <span class="input-label">Reason for Rejection</span>
         <textarea id="reject-reason" class="premium-input" style="height:100px; resize:none; padding:12px;" required
-          placeholder="Explain why the lot is rejected..."></textarea>
+          placeholder="Explain why the lead is rejected..."></textarea>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:12px;">
         <button class="premium-btn premium-btn-secondary" onclick="closeRejectDialog()">Cancel</button>
@@ -1976,19 +2023,35 @@
       </div>
       <div style="margin-bottom:24px;">
         <span class="input-label" style="display:block; margin-bottom:10px;">Select Permissions Keys:</span>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-l1"
-              class="md-checkbox" value="l1"> L1 — Agent</label>
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-l2"
-              class="md-checkbox" value="l2"> L2 — Manager</label>
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-l3"
-              class="md-checkbox" value="l3"> L3 — Finance</label>
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-picker"
-              class="md-checkbox" value="l4_picker"> L4 — Picker</label>
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-scrapper"
-              class="md-checkbox" value="l4_scrapper"> L4 — Scrapper</label>
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-inspect"
-              class="md-checkbox" value="onsite_inspect"> Onsite Inspector</label>
+        <div style="margin-bottom:12px;">
+          <span
+            style="font-size:0.75rem; font-weight:600; text-transform:uppercase; color:var(--primary-color); display:block; margin-bottom:6px;">Admin
+            -</span>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-l1"
+                class="md-checkbox" value="l1_admin"> L1 — Agent</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-l2"
+                class="md-checkbox" value="l2"> L2 — Manager</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-l3"
+                class="md-checkbox" value="l3"> L3 — Finance</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-picker"
+                class="md-checkbox" value="l4_picker_admin"> L4 — Picker</label>
+          </div>
+        </div>
+        <div>
+          <span
+            style="font-size:0.75rem; font-weight:600; text-transform:uppercase; color:var(--success-color); display:block; margin-bottom:6px;">Employee
+            -</span>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-add-leads"
+                class="md-checkbox" value="l1_employee"> Add Leads</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-employee-picker"
+                class="md-checkbox" value="l4_picker_employee"> Picker</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-scrapper"
+                class="md-checkbox" value="l4_scrapper"> Scrapper</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="perm-inspect"
+                class="md-checkbox" value="onsite_inspect"> Onsite Inspector</label>
+          </div>
         </div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:12px;">
@@ -2028,19 +2091,35 @@
 
       <div style="margin-bottom:16px;">
         <span class="input-label" style="display:block; margin-bottom:10px;">Select Permissions Keys:</span>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-l1"
-              class="md-checkbox" value="l1"> L1 — Agent</label>
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-l2"
-              class="md-checkbox" value="l2"> L2 — Manager</label>
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-l3"
-              class="md-checkbox" value="l3"> L3 — Finance</label>
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-picker"
-              class="md-checkbox" value="l4_picker"> L4 — Picker</label>
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox"
-              id="edit-user-perm-scrapper" class="md-checkbox" value="l4_scrapper"> L4 — Scrapper</label>
-          <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-inspect"
-              class="md-checkbox" value="onsite_inspect"> Onsite Inspector</label>
+        <div style="margin-bottom:12px;">
+          <span
+            style="font-size:0.75rem; font-weight:600; text-transform:uppercase; color:var(--primary-color); display:block; margin-bottom:6px;">Admin
+            -</span>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-l1"
+                class="md-checkbox" value="l1_admin"> L1 — Agent</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-l2"
+                class="md-checkbox" value="l2"> L2 — Manager</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox" id="edit-user-perm-l3"
+                class="md-checkbox" value="l3"> L3 — Finance</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox"
+                id="edit-user-perm-picker" class="md-checkbox" value="l4_picker_admin"> L4 — Picker</label>
+          </div>
+        </div>
+        <div>
+          <span
+            style="font-size:0.75rem; font-weight:600; text-transform:uppercase; color:var(--success-color); display:block; margin-bottom:6px;">Employee
+            -</span>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox"
+                id="edit-user-perm-add-leads" class="md-checkbox" value="l1_employee"> Add Leads</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox"
+                id="edit-user-perm-employee-picker" class="md-checkbox" value="l4_picker_employee"> Picker</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox"
+                id="edit-user-perm-scrapper" class="md-checkbox" value="l4_scrapper"> Scrapper</label>
+            <label class="md-checkbox-label" style="font-size:0.85rem;"><input type="checkbox"
+                id="edit-user-perm-inspect" class="md-checkbox" value="onsite_inspect"> Onsite Inspector</label>
+          </div>
         </div>
       </div>
 

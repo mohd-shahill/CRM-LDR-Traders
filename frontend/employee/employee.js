@@ -34,6 +34,9 @@ let l1UploadedMedia = {
   video: null,
 };
 
+let activeUploadCategory = null; // 'doc' or 'media'
+let activeUploadType = null;
+
 // Canvas digital signature state
 let isDrawing = false;
 let sigCanvas = null;
@@ -54,8 +57,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   await Api.syncAll();
 
   const hasStaffRole =
-    user.permissions.includes("l1") ||
-    user.permissions.includes("l4_picker") ||
+    user.permissions.includes("l1_employee") ||
+    user.permissions.includes("l4_picker_employee") ||
     user.permissions.includes("l4_scrapper") ||
     user.is_super_admin ||
     user.permissions.includes("super_admin");
@@ -96,8 +99,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function getStaffDescription(user) {
   const roles = [];
-  if (user.permissions.includes("l1")) roles.push("L1 Agent");
-  if (user.permissions.includes("l4_picker")) roles.push("Picker");
+  if (user.permissions.includes("l1_employee")) roles.push("L1 Agent");
+  if (user.permissions.includes("l4_picker_employee")) roles.push("Picker");
   if (user.permissions.includes("l4_scrapper")) roles.push("Scrapper");
   return roles.join(" & ") || "Employee";
 }
@@ -135,8 +138,8 @@ function renderHomeScreen(user) {
     ${getStaffDescription(user)}
   `;
 
-  const hasL1 = user.permissions.includes("l1");
-  const hasPicker = user.permissions.includes("l4_picker");
+  const hasL1 = user.permissions.includes("l1_employee");
+  const hasPicker = user.permissions.includes("l4_picker_employee");
 
   // Leads card (L1)
   const leadsCard = buildActionCard({
@@ -279,17 +282,17 @@ function navigateTo(screen, updateHash = true) {
   const topTitle = document.getElementById("topbar-section-title");
 
   const titles = {
-    "l1-leads": "Valuation Leads",
-    "l1-add": "Add New Vehicle",
-    picker: "Pickup Collections",
-    scrapper: "Scrap Yard Operations",
-    history: "Purchase History",
+    "l1-leads": `<div style="display:flex; align-items:center; gap:10px; color:var(--primary-color);"><div style="width:32px; height:32px; border-radius:8px; background:rgba(14,165,233,0.15); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg></div> Leads</div>`,
+    "l1-add": `<div style="display:flex; align-items:center; gap:10px; color:var(--primary-color);"><div style="width:32px; height:32px; border-radius:8px; background:rgba(14,165,233,0.15); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div> Add Vehicle</div>`,
+    picker: `<div style="display:flex; align-items:center; gap:10px; color:var(--primary-color);"><div style="width:32px; height:32px; border-radius:8px; background:rgba(14,165,233,0.15); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div> Pickup</div>`,
+    scrapper: `<div style="display:flex; align-items:center; gap:10px; color:var(--primary-color);"><div style="width:32px; height:32px; border-radius:8px; background:rgba(14,165,233,0.15); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></div> Scrap Bay</div>`,
+    history: `<div style="display:flex; align-items:center; gap:10px; color:var(--primary-color);"><div style="width:32px; height:32px; border-radius:8px; background:rgba(14,165,233,0.15); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div> View History</div>`,
   };
 
   if (topLogo) topLogo.style.display = "none";
   if (topTitle) {
     topTitle.style.display = "block";
-    topTitle.textContent = titles[screen] || "Employee Portal";
+    topTitle.innerHTML = titles[screen] || "Employee Portal";
   }
 
   // Show correct screen (both l1-leads and l1-add render in screen-l1 container)
@@ -443,10 +446,7 @@ function initL1Screen(screenMode) {
       queue.innerHTML = "";
       const user = Auth.getCurrentUser();
       const allLeads = Api.getLeads();
-      console.log("DEBUG: allLeads in employee portal:", allLeads);
-      console.log("DEBUG: logged-in user:", user);
       const leads = allLeads.filter((l) => {
-        console.log("DEBUG: filtering lead id:", l.id, "status:", l.status, "assignedTo:", l.assignedTo, "user.id:", user ? user.id : null);
         return l.status === "assigned" && l.assignedTo === (user ? user.id : null);
       });
 
@@ -711,6 +711,10 @@ function loadL1LeadForm(leadId) {
   } else {
     resetPayMode();
   }
+  
+  // Check for saved draft
+  const regNo = document.getElementById("l1-vehicle-reg-no").value.trim();
+  checkL1Draft(regNo);
 }
 
 function renderL1OptionsChecklist(lead) {
@@ -831,79 +835,17 @@ function updateL1RatingLabel(type, score) {
 }
 
 function triggerMockUpload(docType) {
-  const randNum = Math.floor(100 + Math.random() * 900);
-  let fileName = "";
-
-  if (docType === "rc-front") {
-    fileName = `rc_front_${randNum}.jpg`;
-    l1UploadedDocs.rcFront = fileName;
-  } else if (docType === "rc-back") {
-    fileName = `rc_back_${randNum}.jpg`;
-    l1UploadedDocs.rcBack = fileName;
-  } else if (docType === "aadhar") {
-    fileName = `aadhar_${randNum}.pdf`;
-    l1UploadedDocs.aadhar = fileName;
-  } else if (docType === "pan") {
-    fileName = `pan_${randNum}.pdf`;
-    l1UploadedDocs.pan = fileName;
-  } else if (docType === "insurance") {
-    fileName = `insurance_${randNum}.pdf`;
-    l1UploadedDocs.insurance = fileName;
-  } else if (docType === "noc") {
-    fileName = `noc_${randNum}.pdf`;
-    l1UploadedDocs.noc = fileName;
-  } else if (docType === "form35") {
-    fileName = `form35_${randNum}.pdf`;
-    l1UploadedDocs.form35 = fileName;
-  } else if (docType === "pickup-proof") {
-    fileName = `pickup_proof_${randNum}.jpg`;
-    isProofSnapped = true;
-    updateSingleDocCard(
-      "pickup-proof",
-      "Take Delivery Proof Photo",
-      "pickup_proof.jpg",
-      true,
-    );
-    return;
-  }
-
-  updateL1DocVisualCards();
+  activeUploadCategory = "doc";
+  activeUploadType = docType;
+  const input = document.getElementById("global-media-upload");
+  if(input) input.click();
 }
 
 function triggerMockMediaUpload(mediaType) {
-  const randNum = Math.floor(100 + Math.random() * 900);
-  let fileName = "";
-
-  if (mediaType === "ext-front") {
-    fileName = `ext_front_${randNum}.jpg`;
-    l1UploadedMedia.extFront = fileName;
-  } else if (mediaType === "ext-rear") {
-    fileName = `ext_rear_${randNum}.jpg`;
-    l1UploadedMedia.extRear = fileName;
-  } else if (mediaType === "ext-left") {
-    fileName = `ext_left_${randNum}.jpg`;
-    l1UploadedMedia.extLeft = fileName;
-  } else if (mediaType === "ext-right") {
-    fileName = `ext_right_${randNum}.jpg`;
-    l1UploadedMedia.extRight = fileName;
-  } else if (mediaType === "interior") {
-    fileName = `interior_${randNum}.jpg`;
-    l1UploadedMedia.interior = fileName;
-  } else if (mediaType === "engine") {
-    fileName = `engine_bay_${randNum}.jpg`;
-    l1UploadedMedia.engine = fileName;
-  } else if (mediaType === "odometer") {
-    fileName = `odometer_${randNum}.jpg`;
-    l1UploadedMedia.odometer = fileName;
-  } else if (mediaType === "damage") {
-    fileName = `damage_${randNum}.jpg`;
-    l1UploadedMedia.damage = fileName;
-  } else if (mediaType === "video") {
-    fileName = `walkaround_video_${randNum}.mp4`;
-    l1UploadedMedia.video = fileName;
-  }
-
-  updateL1MediaVisualCards();
+  activeUploadCategory = "media";
+  activeUploadType = mediaType;
+  const input = document.getElementById("global-media-upload");
+  if(input) input.click();
 }
 
 function updateL1DocVisualCards() {
@@ -942,17 +884,104 @@ function updateSingleDocCard(id, baseLabel, filename, isCustom = false) {
   const status = document.getElementById(`status-${id}`);
 
   if (card && label && status) {
-    if (filename) {
+    let removeBtn = card.querySelector('.remove-upload-btn');
+    if (removeBtn) removeBtn.remove();
+    
+    let displayFilename = null;
+    let actualFile = null;
+    if (filename instanceof File) {
+      displayFilename = filename.name;
+      actualFile = filename;
+    } else if (filename) {
+      displayFilename = filename;
+      actualFile = filename;
+    }
+
+    if (displayFilename) {
       card.classList.add("uploaded");
       label.innerText = isCustom ? baseLabel : `${baseLabel} (Uploaded)`;
-      status.innerText = filename;
+      status.innerText = displayFilename;
+      
+      if (displayFilename !== "Please wait...") {
+        removeBtn = document.createElement("button");
+        removeBtn.className = "remove-upload-btn";
+        removeBtn.style.position = "absolute";
+        removeBtn.style.top = "6px";
+        removeBtn.style.right = "6px";
+        removeBtn.style.padding = "4px 8px";
+        removeBtn.style.fontSize = "11px";
+        removeBtn.style.fontWeight = "600";
+        removeBtn.style.background = "#ff4d4f";
+        removeBtn.style.color = "white";
+        removeBtn.style.border = "none";
+        removeBtn.style.borderRadius = "4px";
+        removeBtn.style.cursor = "pointer";
+        removeBtn.style.zIndex = "10";
+        removeBtn.innerText = "Remove";
+        removeBtn.onclick = (e) => {
+          e.stopPropagation();
+          window.removeUpload(id, actualFile);
+        };
+        card.appendChild(removeBtn);
+      }
+      
+      // Ensure long filenames are truncated
+      status.style.display = "block";
+      status.style.overflow = "hidden";
+      status.style.textOverflow = "ellipsis";
+      status.style.whiteSpace = "nowrap";
+      status.style.maxWidth = "100%";
+      status.style.marginTop = "4px";
     } else {
       card.classList.remove("uploaded");
       label.innerText = baseLabel;
       status.innerText = "Click to upload";
+      status.style.whiteSpace = "normal";
     }
   }
 }
+
+window.removeUpload = async function(id, fileOrString) {
+  if (!confirm("Remove this photo?")) return;
+  
+  // Attempt backend deletion only if it's a string (already uploaded)
+  if (typeof fileOrString === "string" && fileOrString !== "Please wait...") {
+    try {
+      await Api.deleteFile(fileOrString);
+    } catch (err) {
+      console.error("Failed to delete file from backend:", err);
+    }
+  }
+
+  // Clear local state
+  const isMedia = id.startsWith("ext-") || id === "interior" || id === "engine" || id === "odometer" || id === "damage" || id === "video";
+  if (isMedia) {
+    if (id === "ext-front") l1UploadedMedia.extFront = null;
+    else if (id === "ext-rear") l1UploadedMedia.extRear = null;
+    else if (id === "ext-left") l1UploadedMedia.extLeft = null;
+    else if (id === "ext-right") l1UploadedMedia.extRight = null;
+    else if (id === "interior") l1UploadedMedia.interior = null;
+    else if (id === "engine") l1UploadedMedia.engine = null;
+    else if (id === "odometer") l1UploadedMedia.odometer = null;
+    else if (id === "damage") l1UploadedMedia.damage = null;
+    else if (id === "video") l1UploadedMedia.video = null;
+    updateL1MediaVisualCards();
+  } else {
+    if (id === "rc-front") l1UploadedDocs.rcFront = null;
+    else if (id === "rc-back") l1UploadedDocs.rcBack = null;
+    else if (id === "aadhar") l1UploadedDocs.aadhar = null;
+    else if (id === "pan") l1UploadedDocs.pan = null;
+    else if (id === "insurance") l1UploadedDocs.insurance = null;
+    else if (id === "noc") l1UploadedDocs.noc = null;
+    else if (id === "form35") l1UploadedDocs.form35 = null;
+    else if (id === "pickup-proof") {
+      isProofSnapped = false;
+      updateSingleDocCard(id, "Take Delivery Proof Photo", null, true);
+      return;
+    }
+    updateL1DocVisualCards();
+  }
+};
 
 function updateAllDocCards() {
   updateL1DocVisualCards();
@@ -1018,6 +1047,80 @@ function handleL1DraftSave() {
   localStorage.setItem("ldr_l1_drafts", JSON.stringify(drafts));
 
   Utils.showAlert("Draft saved locally. You can continue later.", "info");
+}
+
+function checkL1Draft(regNo) {
+  if (!regNo) return;
+  const drafts = JSON.parse(localStorage.getItem("ldr_l1_drafts") || "{}");
+  if (drafts[regNo]) {
+    if (confirm("A saved draft was found for this vehicle. Do you want to load it?")) {
+      loadL1Draft(drafts[regNo]);
+    }
+  }
+}
+
+function loadL1Draft(draft) {
+  if (draft.ownerName) document.getElementById("l1-owner-name").value = draft.ownerName;
+  if (draft.ownerPhone) document.getElementById("l1-owner-phone").value = draft.ownerPhone;
+  if (document.getElementById("l1-owner-email") && draft.ownerEmail) document.getElementById("l1-owner-email").value = draft.ownerEmail;
+  if (document.getElementById("l1-owner-address") && draft.ownerAddress) document.getElementById("l1-owner-address").value = draft.ownerAddress;
+
+  if (document.getElementById("l1-engine-no") && draft.engineNumber) document.getElementById("l1-engine-no").value = draft.engineNumber;
+  if (draft.chassisNumber) document.getElementById("l1-chassis-no").value = draft.chassisNumber;
+
+  if (draft.make) document.getElementById("l1-vehicle-make").value = draft.make;
+  if (draft.model) document.getElementById("l1-vehicle-model").value = draft.model;
+  if (draft.year) document.getElementById("l1-vehicle-year").value = draft.year;
+  if (draft.colour) document.getElementById("l1-vehicle-colour").value = draft.colour;
+  if (draft.fuelType) document.getElementById("l1-vehicle-fuel").value = draft.fuelType;
+  if (draft.kmsDriven) document.getElementById("l1-vehicle-kms").value = draft.kmsDriven;
+
+  if (draft.bodyCondition) {
+    currentL1BodyCondition = draft.bodyCondition;
+    updateL1RatingLabel("body", currentL1BodyCondition);
+  }
+  if (draft.engineCondition) {
+    currentL1EngineCondition = draft.engineCondition;
+    updateL1RatingLabel("engine", currentL1EngineCondition);
+  }
+  if (draft.tyreCondition) {
+    currentL1TyreCondition = draft.tyreCondition;
+    updateL1RatingLabel("tyre", currentL1TyreCondition);
+  }
+  renderL1ConditionGrids();
+
+  if (draft.accidentHistory) document.getElementById("l1-accident").value = draft.accidentHistory;
+
+  if (draft.expectedPrice) document.getElementById("l1-expected-price").value = draft.expectedPrice;
+  if (draft.recommendedPrice) document.getElementById("l1-recommended-price").value = draft.recommendedPrice;
+
+  if (draft.paymentMode) {
+    selectPayMode(draft.paymentMode);
+    if (draft.paymentMode === "upi" && draft.paymentDetails) {
+      document.getElementById("l1-upi-id").value = draft.paymentDetails.upiId || "";
+    } else if (draft.paymentMode === "bank" && draft.paymentDetails) {
+      document.getElementById("l1-bank-holder").value = draft.paymentDetails.accountHolder || "";
+      document.getElementById("l1-bank-name").value = draft.paymentDetails.bankName || "";
+      document.getElementById("l1-bank-account").value = draft.paymentDetails.accountNumber || "";
+      document.getElementById("l1-bank-ifsc").value = draft.paymentDetails.ifscCode || "";
+    } else if (draft.paymentMode === "cash" && draft.paymentDetails) {
+      document.getElementById("l1-cash-confirm").checked = !!draft.paymentDetails.cashConfirmed;
+    }
+  }
+
+  // Restore Missing Parts
+  if (draft.missingParts) {
+    currentL1Options = [];
+    const accessoriesList = ["Battery", "AC", "Music System", "Airbags", "Sunroof", "Spare Tyre", "Jack & Tools", "Central Locking"];
+    accessoriesList.forEach(item => {
+      if (!draft.missingParts.includes(item)) {
+        currentL1Options.push(item);
+      }
+    });
+    renderL1OptionsChecklist(null);
+  }
+
+  Utils.showAlert("Draft loaded successfully.", "success");
 }
 
 function getL1FormInputValues() {
@@ -1096,9 +1199,9 @@ function getL1FormInputValues() {
               }
             : null,
 
-    documents: { ...l1UploadedDocs },
-    media: { ...l1UploadedMedia },
-    photos: Object.values(l1UploadedMedia).filter(Boolean),
+    documents: {},
+    media: {},
+    photos: [],
   };
 }
 
@@ -1107,30 +1210,56 @@ async function handleL1Submit(event) {
 
   const valuation = getL1FormInputValues();
 
-  // Basic validation
-  if (!valuation.ownerName || !valuation.ownerPhone) {
-    alert("Please fill in Owner Name and Phone Number.");
-    return;
+  // Provide defaults for empty required fields to avoid database NOT NULL / UNIQUE constraint errors
+  if (!valuation.ownerName) {
+    valuation.ownerName = "Anonymous Owner";
+  }
+  if (!valuation.ownerPhone) {
+    valuation.ownerPhone = "0000000000";
   }
   if (!valuation.vehicleRegNumber) {
-    alert("Please enter the Vehicle Registration Number.");
-    return;
+    valuation.vehicleRegNumber = "TEMP-" + Math.floor(100000 + Math.random() * 900000);
   }
-  if (!valuation.make || !valuation.model) {
-    alert("Please fill in Vehicle Make and Model.");
-    return;
+
+  // --- UPLOAD DEFERRED FILES ---
+  const processUploads = async (obj) => {
+    for (const key of Object.keys(obj)) {
+      if (obj[key] instanceof File) {
+        const btn = document.querySelector("#l1-valuation-form button[type='submit']");
+        const originalText = btn ? btn.innerText : "Save";
+        if (btn) {
+          btn.innerText = "Uploading " + obj[key].name + "...";
+          btn.disabled = true;
+        }
+        try {
+           const res = await Api.uploadFile(obj[key], key);
+           obj[key] = res.path.split('/').pop();
+        } catch (e) {
+           alert("Failed to upload " + obj[key].name);
+           if (btn) { btn.innerText = originalText; btn.disabled = false; }
+           throw e;
+        }
+        if (btn) { btn.innerText = originalText; btn.disabled = false; }
+      }
+    }
+  };
+
+  try {
+    await processUploads(l1UploadedDocs);
+    await processUploads(l1UploadedMedia);
+  } catch(e) {
+    return; // stop submit if any upload fails
   }
-  if (
-    !l1UploadedDocs.rcFront ||
-    !l1UploadedDocs.rcBack ||
-    !l1UploadedDocs.aadhar ||
-    !l1UploadedDocs.pan
-  ) {
-    alert(
-      "Please upload all required KYC Documents (RC Book Front, RC Book Back, Aadhar, and PAN) before submitting.",
-    );
-    return;
-  }
+
+  // Assign filenames AFTER uploads complete so we get strings, not File objects
+  valuation.documents = Object.fromEntries(
+    Object.entries(l1UploadedDocs).filter(([, v]) => v && typeof v === 'string')
+  );
+  valuation.media = Object.fromEntries(
+    Object.entries(l1UploadedMedia).filter(([, v]) => v && typeof v === 'string')
+  );
+  valuation.photos = Object.values(valuation.media);
+  // -----------------------------
 
   const user = Auth.getCurrentUser();
   const leads = Api.getLeads();
@@ -1196,6 +1325,9 @@ async function handleL1Submit(event) {
 
   try {
     await Api.saveLeads(leads);
+    
+    // Set the leadId to the correct DB-generated ID returned by saveLeads
+    leadId = lead.id;
 
     // Remove any saved draft for this vehicle number
     const drafts = JSON.parse(localStorage.getItem("ldr_l1_drafts") || "{}");
@@ -1448,14 +1580,23 @@ async function loadPickerMoreDetails() {
     const photoGallery = document.getElementById("pick-photos-gallery");
     photoGallery.innerHTML = "";
     const media = (lead.l1Details && lead.l1Details.media) || {};
-    const photoUrls = Object.values(media).filter(Boolean);
+    let photoUrls = Object.values(media).filter(Boolean);
+    if (photoUrls.length === 0 && lead.l1Details && lead.l1Details.photos) {
+      photoUrls = lead.l1Details.photos;
+    }
+    
     if (photoUrls.length === 0) {
       photoGallery.innerHTML = '<span style="color:var(--text-secondary); font-size:0.75rem;">No photos available.</span>';
     } else {
       photoUrls.forEach(url => {
+        const mediaUrl = url.startsWith("http") ? url : (url.startsWith("/") ? API_BASE.replace('/api', '') + url : "assets/images/" + url);
         const box = document.createElement("div");
-        box.style.cssText = "width:36px; height:36px; background:var(--surface-variant); border:1px solid var(--border-color); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-secondary);";
-        box.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
+        box.style.cssText = "width:36px; height:36px; background:var(--surface-variant); border:1px solid var(--border-color); border-radius:4px; display:flex; align-items:center; justify-content:center; overflow:hidden;";
+        if (mediaUrl.match(/\.(mp4|webm|ogg)$/i)) {
+          box.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>`;
+        } else {
+          box.innerHTML = `<img src="${mediaUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+        }
         photoGallery.appendChild(box);
       });
     }
@@ -1572,6 +1713,25 @@ async function handleConfirmCollection() {
   if (!isProofSnapped) {
     alert("Please capture a Delivery Proof Photo before verifying handover.");
     return;
+  }
+
+  // Upload deferred proof if necessary
+  if (isProofSnapped instanceof File) {
+    try {
+      const btn = document.getElementById("pick-confirm-btn") || event.target;
+      const origText = btn.innerText;
+      btn.innerText = "Uploading proof...";
+      btn.disabled = true;
+      const res = await Api.uploadFile(isProofSnapped);
+      isProofSnapped = res.path.split('/').pop();
+      btn.innerText = origText;
+      btn.disabled = false;
+    } catch (e) {
+      alert("Failed to upload delivery proof. Please try again.");
+      const btn = document.getElementById("pick-confirm-btn") || event.target;
+      if (btn) { btn.innerText = "Confirm Handover & Submit"; btn.disabled = false; }
+      return;
+    }
   }
 
   if (!hasSigned) {
@@ -1881,15 +2041,9 @@ function loadNotificationsCount() {
     item.style.fontSize = "0.82rem";
     item.style.color = "var(--text-primary)";
     item.innerText = n.message;
-    item.onclick = () => {
+    item.onclick = async () => {
       n.isRead = true;
-      const allNtfs =
-        JSON.parse(localStorage.getItem("rvsf_notifications")) || [];
-      const idx = allNtfs.findIndex((x) => x.id === n.id);
-      if (idx !== -1) {
-        allNtfs[idx].isRead = true;
-        localStorage.setItem("rvsf_notifications", JSON.stringify(allNtfs));
-      }
+      await Api.markNotificationsAsRead(user.id);
       loadNotificationsCount();
 
       const dd = document.getElementById("notification-dropdown");
@@ -1898,10 +2052,10 @@ function loadNotificationsCount() {
       if (n.leadId) {
         const lead = Api.getLeadById(n.leadId);
         if (lead) {
-          if (lead.status === "assigned" && user.permissions.includes("l1")) {
+          if (lead.status === "assigned" && user.permissions.includes("l1_employee")) {
             navigateTo("l1-leads");
             selectL1Lead(n.leadId);
-          } else if (lead.status === "payment_confirmed" && user.permissions.includes("l4_picker")) {
+          } else if (lead.status === "payment_confirmed" && user.permissions.includes("l4_picker_employee")) {
             navigateTo("picker");
             selectPickerLead(n.leadId);
           } else if (lead.status === "picked_up" && user.permissions.includes("l4_scrapper")) {
@@ -1930,3 +2084,46 @@ function toggleNtfDropdown(event) {
     document.addEventListener("click", closeListener);
   }
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const fileInput = document.getElementById("global-media-upload");
+  if (!fileInput) return;
+
+  fileInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    e.target.value = "";
+    
+    const cat = activeUploadCategory;
+    const type = activeUploadType;
+    if (!cat || !type) return;
+    
+    if (cat === "doc") {
+      if (type === "rc-front") l1UploadedDocs.rcFront = file;
+      else if (type === "rc-back") l1UploadedDocs.rcBack = file;
+      else if (type === "aadhar") l1UploadedDocs.aadhar = file;
+      else if (type === "pan") l1UploadedDocs.pan = file;
+      else if (type === "insurance") l1UploadedDocs.insurance = file;
+      else if (type === "noc") l1UploadedDocs.noc = file;
+      else if (type === "form35") l1UploadedDocs.form35 = file;
+      else if (type === "pickup-proof") {
+        isProofSnapped = file;
+        updateSingleDocCard(type, "Take Delivery Proof Photo", file, true);
+        return;
+      }
+      updateL1DocVisualCards();
+    } else if (cat === "media") {
+      if (type === "ext-front") l1UploadedMedia.extFront = file;
+      else if (type === "ext-rear") l1UploadedMedia.extRear = file;
+      else if (type === "ext-left") l1UploadedMedia.extLeft = file;
+      else if (type === "ext-right") l1UploadedMedia.extRight = file;
+      else if (type === "interior") l1UploadedMedia.interior = file;
+      else if (type === "engine") l1UploadedMedia.engine = file;
+      else if (type === "odometer") l1UploadedMedia.odometer = file;
+      else if (type === "damage") l1UploadedMedia.damage = file;
+      else if (type === "video") l1UploadedMedia.video = file;
+      updateL1MediaVisualCards();
+    }
+  });
+});

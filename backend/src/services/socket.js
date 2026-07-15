@@ -13,8 +13,6 @@ export const initSocket = (server, allowedOrigins) => {
   });
 
   io.on('connection', (socket) => {
-    console.log(`Socket connected: ${socket.id}`);
-
     // Registration event so we map userId to connection
     socket.on('register', (userId) => {
       if (userId) {
@@ -22,20 +20,16 @@ export const initSocket = (server, allowedOrigins) => {
           userSockets.set(userId, new Set());
         }
         userSockets.get(userId).add(socket.id);
-        console.log(`Registered user [${userId}] to socket [${socket.id}]`);
       }
     });
 
     socket.on('disconnect', () => {
-      console.log(`Socket disconnected: ${socket.id}`);
       // Clean registration map
       for (const [userId, socketIds] of userSockets.entries()) {
         if (socketIds.has(socket.id)) {
           socketIds.delete(socket.id);
-          console.log(`Removed socket [${socket.id}] from user [${userId}]`);
           if (socketIds.size === 0) {
             userSockets.delete(userId);
-            console.log(`User [${userId}] completely disconnected from sockets.`);
           }
           break;
         }
@@ -55,7 +49,6 @@ export const sendNotificationToUser = (userId, notification) => {
       socketIds.forEach(socketId => {
         io.to(socketId).emit('notification', notification);
       });
-      console.log(`Dispatched real-time notification to user [${userId}]`);
     }
   }
 };
@@ -63,20 +56,17 @@ export const sendNotificationToUser = (userId, notification) => {
 export const broadcastLeadUpdate = (leadId, lead) => {
   if (io) {
     io.emit('lead_updated', { leadId, lead });
-    console.log(`Broadcasted lead_updated event for lead [${leadId}]`);
   }
 };
 
 export const broadcastUserUpdate = (userId, user) => {
   if (io) {
     io.emit('user_updated', { userId, user });
-    console.log(`Broadcasted user_updated event for user [${userId}]`);
   }
 };
 
 export const broadcastAuditLogged = (log) => {
   if (io) {
     io.emit('audit_logged', log);
-    console.log(`Broadcasted audit_logged event`);
   }
 };

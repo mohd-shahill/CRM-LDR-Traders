@@ -24,14 +24,14 @@ export const login = async (req, res) => {
     // Role-based portal verification
     const { portal } = req.body;
     if (portal === 'admin') {
-      const isAdmin = user.is_super_admin || user.permissions.includes('super_admin') || user.permissions.includes('l2') || user.permissions.includes('l3');
+      const isAdmin = user.is_super_admin || user.permissions.includes('super_admin') || user.permissions.includes('l2') || user.permissions.includes('l3') || user.permissions.includes('l1_admin') || user.permissions.includes('l4_picker_admin');
       if (!isAdmin) {
-        return res.status(403).json({ error: 'Access Denied: Logins here are restricted to L2 / L3 administrative staff.' });
+        return res.status(403).json({ error: 'Access Denied: Logins here are restricted to administrative staff.' });
       }
     } else if (portal === 'employee') {
-      const isEmployee = user.is_super_admin || user.permissions.includes('super_admin') || user.permissions.includes('l1') || user.permissions.includes('l4_picker') || user.permissions.includes('l4_scrapper');
+      const isEmployee = user.is_super_admin || user.permissions.includes('super_admin') || user.permissions.includes('l1_employee') || user.permissions.includes('l4_picker_employee') || user.permissions.includes('l4_scrapper');
       if (!isEmployee) {
-        return res.status(403).json({ error: 'Access Denied: Logins here are restricted to L1 / L4 field employees.' });
+        return res.status(403).json({ error: 'Access Denied: Logins here are restricted to field employees.' });
       }
     } else if (portal === 'onsite') {
       const isOnsite = user.is_super_admin || user.permissions.includes('super_admin') || user.permissions.includes('onsite_inspect');

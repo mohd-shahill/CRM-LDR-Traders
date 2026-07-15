@@ -93,7 +93,7 @@
 
       // Redirect if already logged in
       const activeUser = Auth.getCurrentUser();
-      if (activeUser && (Auth.hasPermission('l1') || Auth.hasPermission('l4_picker') || Auth.hasPermission('l4_scrapper') || activeUser.is_super_admin)) {
+      if (activeUser && (Auth.hasPermission('l1_employee') || Auth.hasPermission('l4_picker_employee') || Auth.hasPermission('l4_scrapper') || activeUser.is_super_admin)) {
         window.location.replace('index.html');
         return;
       }
@@ -109,7 +109,7 @@
         const user = await Auth.login(email, password);
         
         // Ensure user has employee rights
-        const hasAccess = Auth.hasPermission('l1') || Auth.hasPermission('l4_picker') || Auth.hasPermission('l4_scrapper');
+        const hasAccess = Auth.hasPermission('l1_employee') || Auth.hasPermission('l4_picker_employee') || Auth.hasPermission('l4_scrapper');
         if (!hasAccess) {
           throw new Error('Access Denied: Logins are restricted to L1 / L4 field employees.');
         }

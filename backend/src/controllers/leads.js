@@ -81,6 +81,8 @@ export const createLead = async (req, res) => {
     kmsDriven,
     expectedPrice,
     wantsNewCar,
+    l1Details,
+    photos
   } = req.body;
 
   if (!ownerName || !phone || !vehicleNumber) {
@@ -113,12 +115,14 @@ export const createLead = async (req, res) => {
     const status = 'new';
     const assignedAgentId = null;
 
+    const finalL1Details = l1Details || (photos ? { photos } : null);
+
     const insertResult = await db.query(
       `INSERT INTO leads (
         id, owner_name, phone, alt_phone, email, address, vehicle_number, 
         make, model, year, colour, fuel_type, kms_driven, expected_price, 
-        wants_new_car, status, assigned_to, submitted_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        wants_new_car, status, assigned_to, submitted_by, l1_details
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *`,
       [
         id,
@@ -139,6 +143,7 @@ export const createLead = async (req, res) => {
         status,
         assignedAgentId,
         req.user?.id || null,
+        finalL1Details ? JSON.stringify(finalL1Details) : null
       ]
     );
 

@@ -29,27 +29,22 @@ function connectSocket(url, userId) {
   });
 
   socket.on('connect', () => {
-    console.log('Connected to real-time updates gateway.');
     socket.emit('register', userId);
   });
 
   socket.on('disconnect', () => {
-    console.log('Disconnected from real-time updates gateway.');
   });
 
   // Handle generic state updates from backend
   socket.on('lead_updated', (data) => {
-    console.log('Lead updated in real-time:', data);
     triggerRealTimeRefresh();
   });
 
   socket.on('user_updated', (data) => {
-    console.log('User updated in real-time:', data);
     triggerRealTimeRefresh();
   });
 
   socket.on('audit_logged', (data) => {
-    console.log('Audit log entry created in real-time:', data);
     // Refresh audit log cache
     if (typeof Api !== 'undefined' && Api.auditLogs) {
       // Proactively push to local cache so we don't necessarily have to hit DB instantly
@@ -62,7 +57,6 @@ function connectSocket(url, userId) {
   });
 
   socket.on('notification', (data) => {
-    console.log('New notification received:', data);
     // Display custom material alert on client
     if (typeof Utils !== 'undefined' && typeof Utils.showAlert === 'function') {
       Utils.showAlert(data.message, 'info');

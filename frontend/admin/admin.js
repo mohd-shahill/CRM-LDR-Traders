@@ -8,6 +8,15 @@ let selectedL2LeadId = null;
 let selectedL3LeadId = null;
 let selectedFinalizedLeadId = null;
 let l1ActiveFilter = "all";
+
+function resolveMediaUrl(val) {
+  if (!val || typeof val !== "string") return "";
+  if (val.startsWith("http")) return val;
+  if (val.startsWith("/")) return API_BASE.replace('/api', '') + val;
+  // Any bare filename (no path separator) is an uploaded file on the backend
+  if (!val.includes('/') && val.includes('.')) return API_BASE.replace('/api', '') + "/uploads/" + val;
+  return val;
+}
 let pagesState = {
   l1: 1,
   l2: 1,
@@ -32,8 +41,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   await Api.syncAll();
 
   const hasAccess =
+    Auth.hasPermission("l1_admin") ||
     Auth.hasPermission("l2") ||
     Auth.hasPermission("l3") ||
+    Auth.hasPermission("l4_picker_admin") ||
     Auth.hasPermission("super_admin") ||
     user.is_super_admin;
   if (!hasAccess) {
@@ -84,6 +95,8 @@ function getRoleDescription(user) {
     return "Manager & Finance";
   if (user.permissions.includes("l2")) return "L2 Purchase Manager";
   if (user.permissions.includes("l3")) return "L3 Payment Team";
+  if (user.permissions.includes("l1_admin")) return "L1 Agent (Admin)";
+  if (user.permissions.includes("l4_picker_admin")) return "L4 Picker (Admin)";
   return "Admin Staff";
 }
 
@@ -109,8 +122,10 @@ function renderSidebarMenu(user) {
   const nav = document.getElementById("nav-list-menu");
   nav.innerHTML = "";
 
+  const hasL1 = user.permissions.includes("l1_admin") || user.is_super_admin;
   const hasL2 = user.permissions.includes("l2") || user.is_super_admin;
   const hasL3 = user.permissions.includes("l3") || user.is_super_admin;
+  const hasL4 = user.permissions.includes("l4_picker_admin") || user.is_super_admin;
   const isSuper = user.is_super_admin;
 
   // Compute live badge counts
@@ -131,14 +146,18 @@ function renderSidebarMenu(user) {
 
   // DASHBOARDS section
   addNavLabel(nav, "Dashboards");
-  addNavItem(
-    nav,
-    "l1",
-    "L1 — Leads",
-    NAV_ICONS.l1,
-    newAndAssigned > 0 ? { count: newAndAssigned, color: "" } : null,
-  );
-  if (hasL2)
+  
+  if (hasL1) {
+    addNavItem(
+      nav,
+      "l1",
+      "L1 — Leads",
+      NAV_ICONS.l1,
+      newAndAssigned > 0 ? { count: newAndAssigned, color: "" } : null,
+    );
+  }
+  
+  if (hasL2) {
     addNavItem(
       nav,
       "l2",
@@ -146,7 +165,9 @@ function renderSidebarMenu(user) {
       NAV_ICONS.l2,
       pendingApproval > 0 ? { count: pendingApproval, color: "amber" } : null,
     );
-  if (hasL3)
+  }
+  
+  if (hasL3) {
     addNavItem(
       nav,
       "l3",
@@ -154,7 +175,11 @@ function renderSidebarMenu(user) {
       NAV_ICONS.l3,
       paymentsDue > 0 ? { count: paymentsDue, color: "blue" } : null,
     );
-  if (isSuper) addNavItem(nav, "l4", "L4 — Picker", NAV_ICONS.l4);
+  }
+  
+  if (hasL4) {
+    addNavItem(nav, "l4", "L4 — Picker", NAV_ICONS.l4);
+  }
 
   // CARS section
   if (hasL2 || hasL3 || isSuper) {
@@ -278,7 +303,7 @@ function loadTabData(tabId) {
 // ──────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────
-function formatStatus(status) {
+function formatStatus(status, lead) {
   const map = {
     new: "New",
     assigned: "Assigned",
@@ -291,7 +316,11 @@ function formatStatus(status) {
     info_needed: "Info needed",
     scrapped: "Scrapped",
   };
-  return map[status] || status;
+  let label = map[status] || status;
+  if (status === "new" && lead && lead.l1Details && lead.l1Details.source === "Website") {
+    label = "New - Website";
+  }
+  return label;
 }
 
 function getAgentName(userId) {
@@ -351,6 +380,9 @@ function renderPagination(
   // Right side: buttons
   const btnsEl = document.createElement("div");
   btnsEl.className = "pagination-btns";
+  btnsEl.style.display = "flex";
+  btnsEl.style.alignItems = "center";
+  btnsEl.style.gap = "6px";
 
   // Prev Button
   const prevBtn = document.createElement("button");
@@ -360,13 +392,62 @@ function renderPagination(
   prevBtn.onclick = () => onPageChange(currentPage - 1);
   btnsEl.appendChild(prevBtn);
 
-  // Page Numbers
-  for (let i = 1; i <= totalPages; i++) {
+  // Helper to create page button
+  const createPageButton = (pageNum) => {
     const pageBtn = document.createElement("button");
-    pageBtn.className = `pagination-btn${i === currentPage ? " active" : ""}`;
-    pageBtn.innerText = i;
-    pageBtn.onclick = () => onPageChange(i);
+    pageBtn.className = `pagination-btn${pageNum === currentPage ? " active" : ""}`;
+    pageBtn.innerText = pageNum;
+    pageBtn.onclick = () => onPageChange(pageNum);
     btnsEl.appendChild(pageBtn);
+  };
+
+  // Page Numbers with sliding window / ellipsis
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) {
+      createPageButton(i);
+    }
+  } else {
+    // Show first page
+    createPageButton(1);
+
+    // Left ellipsis
+    if (currentPage > 3) {
+      const ellipsis = document.createElement("span");
+      ellipsis.innerText = "...";
+      ellipsis.style.padding = "0 4px";
+      ellipsis.style.color = "var(--text-secondary)";
+      ellipsis.style.fontSize = "12px";
+      btnsEl.appendChild(ellipsis);
+    }
+
+    // Determine start and end of middle pages
+    let startPage = Math.max(2, currentPage - 1);
+    let endPage = Math.min(totalPages - 1, currentPage + 1);
+
+    // Adjust window if close to edges
+    if (currentPage <= 3) {
+      endPage = 4;
+    }
+    if (currentPage >= totalPages - 2) {
+      startPage = totalPages - 3;
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      createPageButton(i);
+    }
+
+    // Right ellipsis
+    if (currentPage < totalPages - 2) {
+      const ellipsis = document.createElement("span");
+      ellipsis.innerText = "...";
+      ellipsis.style.padding = "0 4px";
+      ellipsis.style.color = "var(--text-secondary)";
+      ellipsis.style.fontSize = "12px";
+      btnsEl.appendChild(ellipsis);
+    }
+
+    // Show last page
+    createPageButton(totalPages);
   }
 
   // Next Button
@@ -423,7 +504,7 @@ function loadOverview() {
       <td>${lead.ownerName}</td>
       <td>${lead.make || ""} ${lead.model} ${lead.year || ""}</td>
       <td>Seller</td>
-      <td><span class="status-badge ${lead.status}">${formatStatus(lead.status)}</span></td>
+      <td><span class="status-badge ${lead.status}">${formatStatus(lead.status, lead)}</span></td>
       <td>${getAgentName(lead.assignedTo)}</td>
       <td><button class="action-btn" onclick="viewLeadFromOverview('${lead.id}')">View</button></td>
     `;
@@ -511,8 +592,10 @@ function renderL1Table(filter) {
 
   // Pagination logic
   const pageSize = 10;
-  const currentPage = pagesState.l1 || 1;
   const totalItems = filtered.length;
+  let currentPage = pagesState.l1 || 1;
+  const maxPage = Math.ceil(totalItems / pageSize) || 1;
+  if (currentPage > maxPage) { currentPage = maxPage; pagesState.l1 = currentPage; }
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
   const paginated = filtered.slice(start, end);
@@ -523,8 +606,7 @@ function renderL1Table(filter) {
       <td style="font-family:monospace; font-size:12px; color:var(--text-secondary);">#${lead.id.split("-")[1]}</td>
       <td>${lead.ownerName}</td>
       <td>${lead.make || ""} ${lead.model} ${lead.year || ""}</td>
-      <td>${Utils.formatCurrency(lead.expectedPrice)}</td>
-      <td><span class="status-badge ${lead.status}">${formatStatus(lead.status)}</span></td>
+      <td><span class="status-badge ${lead.status}">${formatStatus(lead.status, lead)}</span></td>
       <td>${getAgentName(lead.assignedTo)}</td>
       <td><button class="action-btn" onclick="viewLeadFromOverview('${lead.id}')">View</button></td>
     `;
@@ -556,7 +638,7 @@ function openLeadDetailModal(leadId) {
 
   const statusBadge = document.getElementById("lead-detail-status");
   statusBadge.className = `status-badge ${lead.status}`;
-  statusBadge.innerText = formatStatus(lead.status);
+  statusBadge.innerText = formatStatus(lead.status, lead);
 
   document.getElementById("lead-detail-owner").innerText =
     lead.ownerName || "—";
@@ -653,6 +735,36 @@ function openLeadDetailModal(leadId) {
   } else {
     valuationSection.style.display = "none";
   }
+
+  // Handle media gallery in drawer
+  const drawerMediaSection = document.getElementById("lead-detail-media-section");
+  const drawerMediaGallery = document.getElementById("lead-detail-media-gallery");
+  if (drawerMediaSection && drawerMediaGallery) {
+    drawerMediaGallery.innerHTML = "";
+    const media = (l1 && l1.media) || {};
+    let photoUrls = Object.values(media).filter(Boolean);
+    if (photoUrls.length === 0 && l1 && l1.photos) {
+      photoUrls = l1.photos;
+    }
+    
+    if (photoUrls.length === 0) {
+      drawerMediaGallery.innerHTML = '<span style="color:var(--text-secondary); font-size:0.75rem;">No photos available.</span>';
+    } else {
+      photoUrls.forEach(url => {
+        const mediaUrl = resolveMediaUrl(url);
+        const box = document.createElement("div");
+        box.style.cssText = "width:48px; height:48px; background:var(--surface-variant); border:1px solid var(--border-color); border-radius:4px; display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:pointer;";
+        if (mediaUrl.match(/\.(mp4|webm|ogg)$/i)) {
+          box.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>`;
+          box.onclick = () => openMediaLightbox("Video", "Walkaround Video", mediaUrl);
+        } else {
+          box.innerHTML = `<img src="${mediaUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+          box.onclick = () => openMediaLightbox("Photo", "Vehicle Photo", mediaUrl);
+        }
+        drawerMediaGallery.appendChild(box);
+      });
+    }
+  }
   // Handle visibility of global Reject/Cancel button
   const rejectBtn = document.getElementById("lead-detail-reject-btn");
   if (rejectBtn) {
@@ -670,7 +782,7 @@ function initL1CoordinatorAutocomplete(lead) {
   if (!searchInput || !dropdown) return;
 
   const l1Agents = Api.getUsers().filter(
-    (u) => u.permissions.includes("l1") && u.is_active,
+    (u) => u.permissions.includes("l1_employee") && u.is_active,
   );
 
   // Set initial value
@@ -854,7 +966,7 @@ function loadL2Panel() {
     (l) =>
       l.action === "STATUS_CHANGE" &&
       l.newVal &&
-      l.newVal.includes("Rejected") &&
+      l.newVal.toLowerCase().includes("rejected") &&
       isToday(l.timestamp),
   ).length;
   const infoNeeded = leads.filter((l) => l.status === "info_needed").length;
@@ -876,8 +988,10 @@ function loadL2Panel() {
 
   // Pagination logic
   const pageSize = 10;
-  const currentPage = pagesState.l2 || 1;
   const totalItems = pending.length;
+  let currentPage = pagesState.l2 || 1;
+  const maxPage = Math.ceil(totalItems / pageSize) || 1;
+  if (currentPage > maxPage) { currentPage = maxPage; pagesState.l2 = currentPage; }
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
   const paginated = pending.slice(start, end);
@@ -1109,7 +1223,7 @@ function selectL2Lead(leadId) {
     item.style.cssText =
       "padding:0; overflow:hidden; height:96px; cursor:pointer; border-radius:var(--border-radius-md); border:1px solid var(--border-color);";
     item.innerHTML = `<div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--surface-variant); font-size:0.75rem; color:var(--success-color); transition:all 0.2s;" onmouseover="this.style.color='var(--primary-color)'" onmouseout="this.style.color='var(--success-color)'"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="font-weight:600; text-align:center; padding:0 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; font-size:0.75rem;">${label}</span></div>`;
-    item.onclick = () => openMediaLightbox(label, "Uploaded Document");
+    item.onclick = () => openMediaLightbox(label, "Uploaded Document", resolveMediaUrl(val));
     kycBox.appendChild(item);
   });
 
@@ -1146,14 +1260,16 @@ function selectL2Lead(leadId) {
   Object.entries(mediaToDisplay).forEach(([key, val]) => {
     if (!val) return;
     const label = mediaLabels[key] || key.toUpperCase();
-    const isVideo = key === "video" || val.endsWith(".mp4");
+    const isVideo = key === "video" || (typeof val === "string" && val.endsWith(".mp4"));
     const item = document.createElement("div");
     item.className = "option-tile";
     item.style.cssText =
       "padding:0; overflow:hidden; height:96px; cursor:pointer; border-radius:var(--border-radius-md); border:1px solid var(--border-color);";
     item.innerHTML = `<div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--surface-variant); font-size:0.75rem; color:var(--text-secondary); transition:all 0.2s;" onmouseover="this.style.color='var(--primary-color)'" onmouseout="this.style.color='var(--text-secondary)'">${isVideo ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:6px;"><polygon points="23 7 16 12 23 17"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:6px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'}<span style="font-weight:600; text-align:center; padding:0 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; font-size:0.75rem;">${label}</span></div>`;
-    item.onclick = () =>
-      openMediaLightbox(label, isVideo ? "Walkaround Video" : "Vehicle Photo");
+    item.onclick = () => {
+      const mediaUrl = resolveMediaUrl(val);
+      openMediaLightbox(label, isVideo ? "Walkaround Video" : "Vehicle Photo", mediaUrl);
+    };
     mediaBox.appendChild(item);
   });
 
@@ -1244,6 +1360,10 @@ window.openLeadDetailRejectDialog = function() {
   selectedL2LeadId = currentViewingLeadId;
   openRejectDialog();
 };
+window.openL3LeadRejectDialog = function() {
+  selectedL2LeadId = selectedL3LeadId;
+  openRejectDialog();
+};
 async function handleL2Reject() {
   const reason = document.getElementById("reject-reason").value.trim();
   if (!reason) {
@@ -1307,19 +1427,32 @@ function loadL3Panel() {
   const paidToday = paidAll.filter(
     (l) => l.paymentDetails && isToday(l.paymentDetails.confirmedAt),
   ).length;
-  let totalPaid = 0;
+  let totalPaidThisMonth = 0;
+  let totalPaidLifetime = 0;
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
   paidAll.forEach((l) => {
-    totalPaid += (l.paymentDetails && l.paymentDetails.amount) || 0;
+    if (l.paymentDetails && l.paymentDetails.amount) {
+      totalPaidLifetime += l.paymentDetails.amount;
+    }
+    if (l.paymentDetails && l.paymentDetails.confirmedAt) {
+      const pDate = new Date(l.paymentDetails.confirmedAt);
+      if (pDate.getMonth() === currentMonth && pDate.getFullYear() === currentYear) {
+        totalPaidThisMonth += l.paymentDetails.amount || 0;
+      }
+    }
   });
   const avgPayment =
-    paidAll.length > 0 ? Math.round(totalPaid / paidAll.length) : 0;
+    paidAll.length > 0 ? Math.round(totalPaidLifetime / paidAll.length) : 0;
 
   document.getElementById("l3-awaiting-count").textContent = payable.length;
   document.getElementById("l3-paid-today").textContent = paidToday;
   document.getElementById("l3-total-paid").textContent =
-    totalPaid >= 100000
-      ? `₹${(totalPaid / 100000).toFixed(1)}L`
-      : Utils.formatCurrency(totalPaid);
+    totalPaidThisMonth >= 100000
+      ? `₹${(totalPaidThisMonth / 100000).toFixed(1)}L`
+      : Utils.formatCurrency(totalPaidThisMonth);
   document.getElementById("l3-avg-payment").textContent =
     avgPayment >= 1000
       ? `₹${Math.round(avgPayment / 1000)}K`
@@ -1337,8 +1470,10 @@ function loadL3Panel() {
 
   // Pagination logic
   const pageSize = 10;
-  const currentPage = pagesState.l3 || 1;
   const totalItems = payable.length;
+  let currentPage = pagesState.l3 || 1;
+  const maxPage = Math.ceil(totalItems / pageSize) || 1;
+  if (currentPage > maxPage) { currentPage = maxPage; pagesState.l3 = currentPage; }
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
   const paginated = payable.slice(start, end);
@@ -1443,7 +1578,7 @@ function selectL3Lead(leadId) {
           "padding:0; overflow:hidden; height:96px; cursor:pointer; border-radius:var(--border-radius-md); border:1px solid var(--border-color);";
         const label = key.replace("rc", "RC ").toUpperCase();
         item.innerHTML = `<div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--surface-variant); font-size:0.75rem; color:var(--success-color);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="font-weight:600; text-align:center; padding:0 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; font-size:0.75rem;">${label}</span></div>`;
-        item.onclick = () => openMediaLightbox(label, "Uploaded Document");
+        item.onclick = () => openMediaLightbox(label, "Uploaded Document", resolveMediaUrl(val));
         l3MediaBox.appendChild(item);
       });
     }
@@ -1499,7 +1634,7 @@ async function handleStage1Initiate(event) {
         utrNumber: utr,
         receiptUrl: receipt,
         amount: lead.l1Details
-          ? lead.l1Details.agreedPrice || lead.l1Details.offeredPrice || lead.l1Details.recommendedPrice
+          ? lead.l1Details.agreedPrice || lead.l1Details.offeredPrice || lead.l1Details.recommendedPrice || lead.expectedPrice
           : lead.expectedPrice,
         initiatedBy: user.id,
       },
@@ -1630,13 +1765,15 @@ function loadL4Panel() {
   }
 
   const pickers = Api.getUsers().filter(
-    (u) => u.permissions.includes("l4_picker") && u.is_active,
+    (u) => u.permissions.includes("l4_picker_employee") && u.is_active,
   );
 
   // Pagination logic
   const pageSize = 10;
-  const currentPage = pagesState.l4 || 1;
   const totalItems = paymentConfirmed.length;
+  let currentPage = pagesState.l4 || 1;
+  const maxPage = Math.ceil(totalItems / pageSize) || 1;
+  if (currentPage > maxPage) { currentPage = maxPage; pagesState.l4 = currentPage; }
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
   const paginated = paymentConfirmed.slice(start, end);
@@ -1741,7 +1878,7 @@ window.showTablePickerDropdown = function(leadId, input) {
   const wrapper = input.closest('.table-autocomplete-wrapper');
   const dropdown = wrapper.querySelector('.table-picker-dropdown');
   const pickers = Api.getUsers().filter(
-    (u) => u.permissions.includes("l4_picker") && u.is_active,
+    (u) => u.permissions.includes("l4_picker_employee") && u.is_active,
   );
 
   const renderDropdown = (filterText = "") => {
@@ -1801,7 +1938,7 @@ window.filterTablePickerDropdown = function(leadId, filterText) {
     const wrapper = input.closest('.table-autocomplete-wrapper');
     const dropdown = wrapper.querySelector('.table-picker-dropdown');
     const pickers = Api.getUsers().filter(
-      (u) => u.permissions.includes("l4_picker") && u.is_active,
+      (u) => u.permissions.includes("l4_picker_employee") && u.is_active,
     );
 
     dropdown.innerHTML = "";
@@ -1905,17 +2042,32 @@ function loadUsersPanel() {
 
   // Pagination logic
   const pageSize = 10;
-  const currentPage = pagesState.users || 1;
   const totalItems = users.length;
+  let currentPage = pagesState.users || 1;
+  const maxPage = Math.ceil(totalItems / pageSize) || 1;
+  if (currentPage > maxPage) { currentPage = maxPage; pagesState.users = currentPage; }
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
   const paginated = users.slice(start, end);
 
   paginated.forEach((u) => {
+    const PERMISSION_LABELS = {
+      'l1_admin': 'L1 Agent (Admin)',
+      'l2': 'L2 Manager',
+      'l3': 'L3 Finance',
+      'l4_picker_admin': 'L4 Picker (Admin)',
+      'l1_employee': 'Add Leads (Employee)',
+      'l4_picker_employee': 'Picker (Employee)',
+      'l4_scrapper': 'Scrapper (Employee)',
+      'onsite_inspect': 'Onsite Inspector',
+      'l1': 'L1 Agent',
+      'l4_picker': 'L4 Picker'
+    };
+
     const permStr = u.is_super_admin
       ? "Super Admin"
       : u.permissions.length > 0
-        ? u.permissions.map((p) => p.toUpperCase()).join(", ")
+        ? u.permissions.map((p) => PERMISSION_LABELS[p] || p.toUpperCase()).join(", ")
         : "—";
     const tr = document.createElement("tr");
 
@@ -1964,13 +2116,17 @@ function openEditUserModal(userId) {
 
   // Reset checkboxes based on current permissions
   document.getElementById("edit-user-perm-l1").checked =
-    user.permissions.includes("l1");
+    user.permissions.includes("l1_admin");
+  document.getElementById("edit-user-perm-add-leads").checked =
+    user.permissions.includes("l1_employee");
   document.getElementById("edit-user-perm-l2").checked =
     user.permissions.includes("l2");
   document.getElementById("edit-user-perm-l3").checked =
     user.permissions.includes("l3");
   document.getElementById("edit-user-perm-picker").checked =
-    user.permissions.includes("l4_picker");
+    user.permissions.includes("l4_picker_admin");
+  document.getElementById("edit-user-perm-employee-picker").checked =
+    user.permissions.includes("l4_picker_employee");
   document.getElementById("edit-user-perm-scrapper").checked =
     user.permissions.includes("l4_scrapper");
   document.getElementById("edit-user-perm-inspect").checked =
@@ -2006,18 +2162,14 @@ async function saveUserDetails() {
 
     // Permissions
     const newPerms = [];
-    if (document.getElementById("edit-user-perm-l1").checked)
-      newPerms.push("l1");
-    if (document.getElementById("edit-user-perm-l2").checked)
-      newPerms.push("l2");
-    if (document.getElementById("edit-user-perm-l3").checked)
-      newPerms.push("l3");
-    if (document.getElementById("edit-user-perm-picker").checked)
-      newPerms.push("l4_picker");
-    if (document.getElementById("edit-user-perm-scrapper").checked)
-      newPerms.push("l4_scrapper");
-    if (document.getElementById("edit-user-perm-inspect").checked)
-      newPerms.push("onsite_inspect");
+    if (document.getElementById("edit-user-perm-l1").checked) newPerms.push("l1_admin");
+    if (document.getElementById("edit-user-perm-l2").checked) newPerms.push("l2");
+    if (document.getElementById("edit-user-perm-l3").checked) newPerms.push("l3");
+    if (document.getElementById("edit-user-perm-picker").checked) newPerms.push("l4_picker_admin");
+    if (document.getElementById("edit-user-perm-add-leads").checked) newPerms.push("l1_employee");
+    if (document.getElementById("edit-user-perm-employee-picker").checked) newPerms.push("l4_picker_employee");
+    if (document.getElementById("edit-user-perm-scrapper").checked) newPerms.push("l4_scrapper");
+    if (document.getElementById("edit-user-perm-inspect").checked) newPerms.push("onsite_inspect");
 
     // Blocked status
     const isBlocked = document.getElementById("edit-user-blocked").checked;
@@ -2070,15 +2222,14 @@ async function handleCreateUser() {
     return;
   }
   const permissions = [];
-  if (document.getElementById("perm-l1").checked) permissions.push("l1");
+  if (document.getElementById("perm-l1").checked) permissions.push("l1_admin");
   if (document.getElementById("perm-l2").checked) permissions.push("l2");
   if (document.getElementById("perm-l3").checked) permissions.push("l3");
-  if (document.getElementById("perm-picker").checked)
-    permissions.push("l4_picker");
-  if (document.getElementById("perm-scrapper").checked)
-    permissions.push("l4_scrapper");
-  if (document.getElementById("perm-inspect").checked)
-    permissions.push("onsite_inspect");
+  if (document.getElementById("perm-picker").checked) permissions.push("l4_picker_admin");
+  if (document.getElementById("perm-add-leads").checked) permissions.push("l1_employee");
+  if (document.getElementById("perm-employee-picker").checked) permissions.push("l4_picker_employee");
+  if (document.getElementById("perm-scrapper").checked) permissions.push("l4_scrapper");
+  if (document.getElementById("perm-inspect").checked) permissions.push("onsite_inspect");
   const users = Api.getUsers();
   const newUser = {
     id: "usr-" + Math.floor(1000 + Math.random() * 9000),
@@ -2122,8 +2273,10 @@ function loadAuditPanel() {
 
   // Pagination logic
   const pageSize = 10;
-  const currentPage = pagesState.audit || 1;
   const totalItems = logs.length;
+  let currentPage = pagesState.audit || 1;
+  const maxPage = Math.ceil(totalItems / pageSize) || 1;
+  if (currentPage > maxPage) { currentPage = maxPage; pagesState.audit = currentPage; }
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
   const paginated = logs.slice(start, end);
@@ -2466,15 +2619,9 @@ function loadNotificationsCount() {
       : "var(--primary-container)";
     item.style.cursor = "pointer";
     item.innerText = n.message;
-    item.onclick = () => {
+    item.onclick = async () => {
       n.isRead = true;
-      const allNtfs =
-        JSON.parse(localStorage.getItem("rvsf_notifications")) || [];
-      const idx = allNtfs.findIndex((x) => x.id === n.id);
-      if (idx !== -1) {
-        allNtfs[idx].isRead = true;
-        localStorage.setItem("rvsf_notifications", JSON.stringify(allNtfs));
-      }
+      await Api.markNotificationsAsRead(user.id);
       loadNotificationsCount();
 
       const dd = document.getElementById("notification-dropdown");
@@ -2506,22 +2653,34 @@ function toggleNtfDropdown(event) {
 // ──────────────────────────────────────────────
 // MEDIA LIGHTBOX
 // ──────────────────────────────────────────────
-function openMediaLightbox(label, type) {
+function openMediaLightbox(label, type, url) {
   document.getElementById("lightbox-title").innerText = label;
-  document.getElementById("lightbox-label").innerText =
-    label.toLowerCase().replace(/ /g, "_") +
-    (type === "Vehicle Photo" ? ".jpg" : ".pdf");
-  document.getElementById("lightbox-type").innerText = type;
-  const icon = document.getElementById("lightbox-icon");
-  if (type === "Vehicle Photo") {
-    icon.innerHTML =
-      '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>';
-    icon.style.stroke = "var(--primary-color)";
+  const labelText = label.toLowerCase().replace(/ /g, "_") + (type === "Vehicle Photo" ? ".webp" : ".pdf");
+  
+  const preview = document.getElementById("lightbox-preview");
+  if (url && (type === "Vehicle Photo" || url.match(/\.(jpg|jpeg|png|webp|gif)$/i))) {
+    preview.innerHTML = `
+      <img src="${url}" style="max-width:100%; max-height:50vh; object-fit:contain; border-radius:8px; z-index:1;">
+      <span id="lightbox-label" style="display:none;">${labelText}</span>
+      <span id="lightbox-type" style="display:none;">${type}</span>
+    `;
+  } else if (url && (type === "Walkaround Video" || url.match(/\.(mp4|webm|ogg)$/i))) {
+    preview.innerHTML = `
+      <video src="${url}" controls style="max-width:100%; max-height:50vh; border-radius:8px; z-index:1;"></video>
+      <span id="lightbox-label" style="display:none;">${labelText}</span>
+      <span id="lightbox-type" style="display:none;">${type}</span>
+    `;
   } else {
-    icon.innerHTML =
-      '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>';
-    icon.style.stroke = "var(--success-color)";
+    preview.innerHTML = `
+      <div style="position:absolute; top:0; left:0; right:0; bottom:0; background:radial-gradient(circle at center, rgba(14,165,233,0.15) 0%, transparent 70%);"></div>
+      <svg id="lightbox-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="${type === 'Vehicle Photo' ? 'var(--primary-color)' : 'var(--success-color)'}" stroke-width="1.5" style="margin-bottom:16px; z-index:1;">
+        ${type === "Vehicle Photo" ? '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>' : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'}
+      </svg>
+      <span id="lightbox-label" style="font-family:monospace; font-size:0.95rem; color:var(--text-primary); font-weight:600; z-index:1;">${labelText}</span>
+      <span id="lightbox-type" style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px; z-index:1;">${type}</span>
+    `;
   }
+  
   document.getElementById("lightbox-modal").style.display = "flex";
 }
 
@@ -3147,7 +3306,16 @@ function getFileUrl(file) {
   ) {
     return file;
   }
-  return "../uploads/" + file;
+  // If it's a mock file, resolve to local assets
+  const mockFiles = [
+    "rc_front.jpg", "rc_back.jpg", "aadhar.jpg", "pan.jpg",
+    "exterior_front.jpg", "exterior_rear.jpg", "interior_view.jpg", "engine_bay.jpg"
+  ];
+  if (mockFiles.includes(file)) {
+    return "../assets/images/" + file;
+  }
+  // Otherwise, point to the backend uploads server
+  return API_BASE.replace('/api', '') + "/uploads/" + file;
 }
 
 function viewFinalizedLead(leadId) {
@@ -3431,8 +3599,10 @@ function loadFinalizedPanel() {
 
   // Pagination logic
   const pageSize = 10;
-  const currentPage = pagesState.finalized || 1;
   const totalItems = filtered.length;
+  let currentPage = pagesState.finalized || 1;
+  const maxPage = Math.ceil(totalItems / pageSize) || 1;
+  if (currentPage > maxPage) { currentPage = maxPage; pagesState.finalized = currentPage; }
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
   const paginated = filtered.slice(start, end);

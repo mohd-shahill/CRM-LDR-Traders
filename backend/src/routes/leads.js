@@ -21,7 +21,7 @@ router.get('/', getLeads);
 router.get('/:id', getLeadById);
 
 router.put('/:id/assign', requirePermission('super_admin'), assignLead);
-router.put('/:id/l1', requirePermission('l1'), updateL1Details);
+router.put('/:id/l1', requirePermission('l1_employee'), updateL1Details);
 router.put('/:id/l2', requirePermission('l2'), updateL2Details);
 router.put('/:id/l3', requirePermission('l3'), updateL3Details);
 

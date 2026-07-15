@@ -93,7 +93,7 @@
 
       // Redirect if already logged in
       const activeUser = Auth.getCurrentUser();
-      if (activeUser && (Auth.hasPermission('l2') || Auth.hasPermission('l3') || Auth.hasPermission('super_admin') || activeUser.is_super_admin)) {
+      if (activeUser && (Auth.hasPermission('l2') || Auth.hasPermission('l3') || Auth.hasPermission('l1_admin') || Auth.hasPermission('l4_picker_admin') || Auth.hasPermission('super_admin') || activeUser.is_super_admin)) {
         window.location.replace('index.html');
         return;
       }
@@ -109,7 +109,7 @@
         const user = await Auth.login(email, password);
         
         // Ensure user has admin rights
-        const hasAccess = Auth.hasPermission('l2') || Auth.hasPermission('l3') || Auth.hasPermission('super_admin');
+        const hasAccess = Auth.hasPermission('l2') || Auth.hasPermission('l3') || Auth.hasPermission('l1_admin') || Auth.hasPermission('l4_picker_admin') || Auth.hasPermission('super_admin');
         if (!hasAccess) {
           throw new Error('Access Denied: Logins are restricted to L2 / L3 administrative staff.');
         }

@@ -98,6 +98,7 @@ const Api = {
       this.leads = rawLeads.map(mapLeadToCamelCase);
       this.pristineLeads = JSON.parse(JSON.stringify(this.leads));
       this.auditLogs = await apiFetch('/audit').catch(() => []);
+      this.notifications = await apiFetch('/notifications').catch(() => []);
 
       const currentUser = Auth.getCurrentUser();
       if (currentUser && (currentUser.permissions.includes('onsite_inspect') || currentUser.is_super_admin)) {
@@ -179,10 +180,13 @@ const Api = {
       try {
         if (!cached) {
           // New lead creation
-          await apiFetch('/leads', {
+          const res = await apiFetch('/leads', {
             method: 'POST',
             body: JSON.stringify(l),
           });
+          if (res && res.lead && res.lead.id) {
+            l.id = res.lead.id;
+          }
         } else {
           // Detect specific stage updates by comparing cached state
           const statusChanged = cached.status !== l.status;
@@ -276,6 +280,37 @@ const Api = {
     return lead;
   },
 
+  // ------------------ FILE UPLOAD API ------------------
+  async uploadFile(file, fieldName = 'file') {
+    const formData = new FormData();
+    formData.append(fieldName, file);
+    
+    // We cannot use apiFetch directly because we need to let the browser set the boundary in Content-Type for FormData
+    const url = `${API_BASE}/upload`;
+    const options = {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'X-Portal': getPortalName(),
+      },
+      body: formData
+    };
+    
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  async deleteFile(filename) {
+    if (!filename) return;
+    return apiFetch(`/upload/${encodeURIComponent(filename)}`, {
+      method: 'DELETE',
+    });
+  },
+
   // ------------------ ONSITE / CALENDAR INSPECTION API ------------------
   getAuctions() {
     return this.schedules;
@@ -289,34 +324,33 @@ const Api = {
 
   // ------------------ NOTIFICATION API ------------------
   getNotifications(userId) {
-    const notifications = localStorage.getItem('rvsf_notifications');
-    const parsed = notifications ? JSON.parse(notifications) : [];
-    return parsed.filter((n) => n.userId === userId || n.userId === 'all');
+    return this.notifications || [];
   },
 
-  addNotification(userId, leadId, message) {
-    const notifications = localStorage.getItem('rvsf_notifications');
-    const parsed = notifications ? JSON.parse(notifications) : [];
-    parsed.unshift({
-      id: 'ntf-' + Math.floor(1000 + Math.random() * 9000),
-      userId,
-      leadId,
-      message,
-      isRead: false,
-      createdAt: new Date().toISOString(),
-    });
-    localStorage.setItem('rvsf_notifications', JSON.stringify(parsed));
+  async addNotification(userId, leadId, message) {
+    try {
+      await apiFetch('/notifications', {
+        method: 'POST',
+        body: JSON.stringify({ userId, leadId, message }),
+      });
+      // Refresh local copy
+      this.notifications = await apiFetch('/notifications').catch(() => []);
+    } catch (err) {
+      console.error('Error adding notification:', err);
+    }
   },
 
-  markNotificationsAsRead(userId) {
-    const notifications = localStorage.getItem('rvsf_notifications');
-    const parsed = notifications ? JSON.parse(notifications) : [];
-    parsed.forEach((n) => {
-      if (n.userId === userId || n.userId === 'all') {
-        n.isRead = true;
+  async markNotificationsAsRead(userId) {
+    try {
+      await apiFetch('/notifications/read', {
+        method: 'PUT',
+      });
+      if (this.notifications) {
+        this.notifications.forEach(n => n.isRead = true);
       }
-    });
-    localStorage.setItem('rvsf_notifications', JSON.stringify(parsed));
+    } catch (err) {
+      console.error('Error marking notifications as read:', err);
+    }
   },
 
   // ------------------ AUDIT LOGS ------------------
@@ -343,8 +377,30 @@ const Api = {
     }
   },
 
-  async uploadFile(file) {
+  async uploadFile(file, fieldName = 'file') {
     const url = `${API_BASE}/upload`;
+    const formData = new FormData();
+    formData.append(fieldName, file);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers: {
+        'X-Portal': getPortalName(),
+      }
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `Upload error status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  async uploadPublicFile(file) {
+    const url = `${API_BASE}/upload/public`;
     const formData = new FormData();
     formData.append('file', file);
 

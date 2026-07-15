@@ -42,157 +42,87 @@
     <div class="premium-card" id="query-card">
       <form id="public-seller-form" onsubmit="handleQuerySubmit(event)">
         
-        <!-- Section 1: Contact -->
+        <!-- Enter your vehicle details to get an instant, legally compliant scrap quote -->
+        <p style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 24px;">
+          Enter your vehicle details to get an instant, legally compliant scrap quote.
+        </p>
+
+        <!-- Section 1: Personal Details -->
         <div class="section-title">
-          Contact
+          Personal Details
         </div>
 
         <div class="form-row split-2">
           <div class="input-wrapper">
-            <span class="input-label">Full Name</span>
-            <input type="text" id="owner-name" class="premium-input" required placeholder="Enter your full name">
+            <span class="input-label">Owner Name *</span>
+            <input type="text" id="owner-name" class="premium-input" required placeholder="Enter full name">
           </div>
           <div class="input-wrapper">
-            <span class="input-label">Mobile Number</span>
-            <input type="tel" id="owner-phone" class="premium-input" required pattern="[0-9]{10}" placeholder="10 digit mobile number" maxlength="10">
+            <span class="input-label">Phone Number *</span>
+            <input type="tel" id="owner-phone" class="premium-input" required pattern="[0-9]{10}" placeholder="e.g. 9876543210" maxlength="10">
           </div>
         </div>
 
-        <!-- Section 2: Vehicle -->
+        <!-- Section 2: Vehicle Details -->
         <div class="section-title" style="margin-top: 32px;">
-          Vehicle
+          Vehicle Details
+        </div>
+
+        <div class="form-row split-2">
+          <div class="input-wrapper">
+            <span class="input-label">Vehicle Registration *</span>
+            <input type="text" id="veh-reg" class="premium-input" required placeholder="e.g. DL3CAQ9981" style="text-transform: uppercase;">
+          </div>
+          <div class="input-wrapper">
+            <span class="input-label">Model *</span>
+            <input type="text" id="veh-model" class="premium-input" required placeholder="e.g. Maruti Suzuki Swift Dzire">
+          </div>
+        </div>
+
+        <div class="form-row split-2">
+          <div class="input-wrapper">
+            <span class="input-label">Registration Year *</span>
+            <input type="number" id="veh-year" class="premium-input" required min="1990" max="2024" placeholder="e.g. 2012">
+          </div>
+          <div class="input-wrapper">
+            <span class="input-label">Expected Price (₹)</span>
+            <input type="number" id="expected-price" class="premium-input" placeholder="e.g. 45000">
+          </div>
         </div>
 
         <div class="form-row">
-          <div class="input-wrapper">
-            <span class="input-label">Registration Number (Caps)</span>
-            <input type="text" id="veh-reg" class="premium-input" required placeholder="e.g. DL3CAQ9981" style="text-transform: uppercase;">
-          </div>
-        </div>
-
-        <div class="form-row split-2">
-          <div class="input-wrapper">
-            <span class="input-label">Car Model</span>
-            <input type="text" id="veh-model" class="premium-input" required placeholder="e.g. Maruti Suzuki Swift Dzire">
-          </div>
-          <div class="input-wrapper">
-            <span class="input-label">Manufacture Year</span>
-            <select id="veh-year" class="premium-select" required></select>
-          </div>
-        </div>
-
-        <!-- Section 3: Accessories Present -->
-        <div class="section-title" style="margin-top: 32px;">
-          Accessories Present
-        </div>
-
-        <div class="premium-benefit-banner" style="margin-bottom: 24px;">
-          <!-- Battery Toggle -->
-          <div class="benefit-toggle-row" style="margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-            <div>
-              <strong style="font-size: 0.95rem; display:block;">Battery</strong>
-              <span style="font-size: 0.8rem; color: var(--text-muted);">Is the main electrical battery present inside the vehicle?</span>
-            </div>
-            <label class="modern-switch">
-              <input type="checkbox" id="acc-battery" checked>
-              <span class="switch-slider"></span>
+          <span class="input-label" style="display:block; margin-bottom: 12px;">Fitted Accessories (Check all that apply)</span>
+          <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <label class="modern-toggle">
+              <input type="checkbox" id="acc-battery">
+              <span class="slider"></span>
+              <span class="toggle-label">Battery</span>
             </label>
-          </div>
-
-          <!-- AC Toggle -->
-          <div class="benefit-toggle-row" style="margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-            <div>
-              <strong style="font-size: 0.95rem; display:block;">Air Conditioning (AC)</strong>
-              <span style="font-size: 0.8rem; color: var(--text-muted);">Is the AC compressor and cooling unit intact?</span>
-            </div>
-            <label class="modern-switch">
-              <input type="checkbox" id="acc-ac" checked>
-              <span class="switch-slider"></span>
+            <label class="modern-toggle">
+              <input type="checkbox" id="acc-ac">
+              <span class="slider"></span>
+              <span class="toggle-label">AC System</span>
             </label>
-          </div>
-
-          <!-- Music Toggle -->
-          <div class="benefit-toggle-row" style="padding-bottom: 4px;">
-            <div>
-              <strong style="font-size: 0.95rem; display:block;">Music System</strong>
-              <span style="font-size: 0.8rem; color: var(--text-muted);">Is the media stereo deck or dashboard console present?</span>
-            </div>
-            <label class="modern-switch">
+            <label class="modern-toggle">
               <input type="checkbox" id="acc-music">
-              <span class="switch-slider"></span>
+              <span class="slider"></span>
+              <span class="toggle-label">Music System</span>
             </label>
           </div>
         </div>
 
-        <!-- Section 4: Media & Valuation -->
-        <div class="section-title" style="margin-top: 32px;">
-          Media & Valuation
-        </div>
-
-        <!-- Premium Photo Upload Area -->
-        <div style="margin-bottom: 24px;">
-          <span class="input-label" style="display:block; margin-bottom: 8px;">Vehicle Photographs (Min 2 required)</span>
-          <div class="premium-upload-zone" onclick="document.getElementById('photo-input').click()">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="margin-bottom: 12px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <p style="font-weight: 700; font-size: 1rem; margin:0 0 4px;">Choose vehicle images</p>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">Supports PNG, JPG, WebP. Compressed on target pipeline.</span>
-            <input type="file" id="photo-input" style="display:none;" multiple accept="image/*" onchange="processPhotos(event)">
-          </div>
-          <div class="preview-grid" id="photo-preview-grid"></div>
-        </div>
-
-        <!-- Video Upload Optional -->
-        <div style="margin-bottom: 32px;">
-          <span class="input-label" style="display:block; margin-bottom: 8px;">walkaround videos (Optional, Max 3)</span>
-          <div class="premium-upload-zone" onclick="document.getElementById('video-input').click()">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="margin-bottom: 12px;"><path d="M23 7a2 2 0 0 0-2.45-1.45L16 7V5a2 2 0 0 0-2-2H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2l4.55 1.45A2 2 0 0 0 23 17V7z"/></svg>
-            <p style="font-weight: 700; font-size: 1rem; margin:0 0 4px;">Choose walkaround video</p>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">Supports MP4, WebM formats.</span>
-            <input type="file" id="video-input" style="display:none;" multiple accept="video/*" onchange="processVideos(event)">
-          </div>
-          <div class="preview-grid" id="video-preview-grid"></div>
-        </div>
-
-        <!-- Section 5: Expected Scrap Value (₹) -->
-        <div class="section-title" style="margin-top: 32px;">
-          Expected Scrap Value (₹)
-        </div>
-
-        <div class="input-wrapper" style="margin-bottom: 24px;">
-          <input type="number" id="expected-price" class="premium-input" required placeholder="Enter expected price amount in ₹">
-        </div>
-
-        <!-- Section 6: New Car Exchange Program? -->
-        <div class="section-title" style="margin-top: 32px;">
-          New Car Exchange Program?
-        </div>
-
-        <!-- Premium Interactive Benefit Container -->
-        <div class="premium-benefit-banner">
-          <div class="benefit-toggle-row">
-            <div>
-              <strong style="font-size: 1rem; display:block;">Enroll in Exchange program?</strong>
-              <span style="font-size: 0.8rem; color: var(--text-muted);">Swap your vehicle recycling receipt for a factory dealer purchase voucher.</span>
-            </div>
-            <label class="modern-switch">
-              <input type="checkbox" id="exchange-benefit-toggle" onchange="toggleInteractiveBenefit(this.checked)">
-              <span class="switch-slider"></span>
-            </label>
-          </div>
-
-          <div class="benefit-output" id="benefit-message-box">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-            <div>
-              <strong style="font-size: 0.95rem; display:block;">Standard Cash Bonus Added!</strong>
-              <span style="font-size: 0.85rem;">You are eligible for a cash bonus of <strong>₹10,500</strong> credited in addition to the final scrap valuation!</span>
-            </div>
-          </div>
+        <div class="form-row" style="margin-top: 12px;">
+          <label class="modern-toggle" style="background: var(--surface-bg); padding: 12px 16px; border-radius: var(--border-radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; width: 100%;">
+            <input type="checkbox" id="exchange-benefit-toggle">
+            <span class="slider" style="position: relative; flex-shrink: 0; margin-right: 12px;"></span>
+            <span class="toggle-label" style="margin: 0;">I want to buy a new car and claim the 5% OEM Exchange Benefit Certificate</span>
+          </label>
         </div>
 
         <!-- Action Buttons Group -->
         <div class="buttons-group">
           <button type="button" class="premium-btn premium-btn-secondary" onclick="window.location.reload()">Clear Form</button>
-          <button type="submit" class="premium-btn premium-btn-primary">Submit recycling Request</button>
+          <button type="submit" class="premium-btn premium-btn-primary">GET VALUATION</button>
         </div>
 
       </form>

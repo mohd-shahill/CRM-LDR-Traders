@@ -10,6 +10,7 @@ import leadsRoutes from './routes/leads.js';
 import onsiteRoutes from './routes/onsite.js';
 import uploadRoutes from './routes/upload.js';
 import auditRoutes from './routes/audit.js';
+import notificationsRoutes from './routes/notifications.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +48,7 @@ app.use('/api/leads', leadsRoutes);
 app.use('/api/onsite', onsiteRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Base route health check
 app.get('/', (req, res) => {
