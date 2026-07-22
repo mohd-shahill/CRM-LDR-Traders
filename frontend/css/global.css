@@ -724,6 +724,13 @@ a:hover {
 }
 
 /* === Autocomplete System CSS === */
+.table-autocomplete-wrapper {
+  position: relative;
+}
+.table-autocomplete-wrapper:focus-within {
+  z-index: 1020;
+}
+
 .autocomplete-dropdown {
   position: absolute;
   top: calc(100% + 4px);

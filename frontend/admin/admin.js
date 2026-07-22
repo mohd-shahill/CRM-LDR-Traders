@@ -8,6 +8,7 @@ let selectedL2LeadId = null;
 let selectedL3LeadId = null;
 let selectedFinalizedLeadId = null;
 let l1ActiveFilter = "all";
+let overviewCharts = { tonnage: null, margins: null, conversion: null, agents: null };
 
 function resolveMediaUrl(val) {
   if (!val || typeof val !== "string") return "";
@@ -497,7 +498,7 @@ function loadOverview() {
   const sorted = [...leads].sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
   );
-  sorted.slice(0, 8).forEach((lead) => {
+  sorted.slice(0, 10).forEach((lead) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td style="font-family:monospace; font-size:12px; color:var(--text-secondary);">#${lead.id.split("-")[1]}</td>
@@ -509,6 +510,232 @@ function loadOverview() {
       <td><button class="action-btn" onclick="viewLeadFromOverview('${lead.id}')">View</button></td>
     `;
     tbody.appendChild(tr);
+  });
+
+  // Render the dynamic visual charts
+  renderOverviewCharts(leads);
+}
+
+function renderOverviewCharts(leads) {
+  // Destroy existing charts to prevent hover bugs/re-rendering overlap
+  Object.keys(overviewCharts).forEach(key => {
+    if (overviewCharts[key]) {
+      overviewCharts[key].destroy();
+      overviewCharts[key] = null;
+    }
+  });
+
+  const now = new Date();
+  const theme = document.documentElement.getAttribute("data-theme") || "dark";
+  const isDark = theme === "dark";
+  const gridColor = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)";
+  const textColor = isDark ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.7)";
+
+  // 1. Monthly Scrap Tonnage
+  const scrappedLeads = leads.filter(l => l.status === "scrapped");
+  const monthlyTonnageMap = {};
+  
+  // Pre-populate last 6 months
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const label = d.toLocaleString("default", { month: "short", year: "2-digit" });
+    monthlyTonnageMap[label] = 0;
+  }
+
+  scrappedLeads.forEach(l => {
+    const dateStr = l.updatedAt || l.createdAt;
+    if (!dateStr) return;
+    const d = new Date(dateStr);
+    const label = d.toLocaleString("default", { month: "short", year: "2-digit" });
+    const scrap = l.scrapDetails || {};
+    const weight = parseFloat(scrap.weightKg || scrap.weight_kg || 0);
+    if (monthlyTonnageMap[label] !== undefined) {
+      monthlyTonnageMap[label] += weight / 1000;
+    }
+  });
+
+  const tonnageLabels = Object.keys(monthlyTonnageMap);
+  const tonnageData = Object.values(monthlyTonnageMap);
+
+  const ctxTonnage = document.getElementById("chart-tonnage").getContext("2d");
+  overviewCharts.tonnage = new Chart(ctxTonnage, {
+    type: "line",
+    data: {
+      labels: tonnageLabels,
+      datasets: [{
+        label: "Tons Scrapped",
+        data: tonnageData,
+        borderColor: "#0ea5e9",
+        backgroundColor: "rgba(14, 165, 233, 0.15)",
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2,
+        pointBackgroundColor: "#0ea5e9"
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+        y: { grid: { color: gridColor }, ticks: { color: textColor }, beginAtZero: true }
+      }
+    }
+  });
+
+  // 2. Average Purchase vs. Resale Margins
+  const monthlyPurchaseMap = {};
+  const monthlyResaleMap = {};
+  
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const label = d.toLocaleString("default", { month: "short", year: "2-digit" });
+    monthlyPurchaseMap[label] = { total: 0, count: 0 };
+    monthlyResaleMap[label] = { total: 0, count: 0 };
+  }
+
+  leads.forEach(l => {
+    const dateStr = l.createdAt;
+    if (!dateStr) return;
+    const d = new Date(dateStr);
+    const label = d.toLocaleString("default", { month: "short", year: "2-digit" });
+    
+    // Purchase value
+    const purchase = (l.l1Details && (l.l1Details.agreedPrice || l.l1Details.offeredPrice || l.l1Details.recommendedPrice)) || l.expectedPrice || 0;
+    if (monthlyPurchaseMap[label]) {
+      monthlyPurchaseMap[label].total += purchase;
+      monthlyPurchaseMap[label].count++;
+    }
+
+    // Resale value
+    if (l.status === "scrapped") {
+      const scrap = l.scrapDetails || {};
+      const resale = parseFloat(scrap.scrapValue || scrap.scrap_value || 0);
+      if (monthlyResaleMap[label]) {
+        monthlyResaleMap[label].total += resale;
+        monthlyResaleMap[label].count++;
+      }
+    }
+  });
+
+  const marginLabels = Object.keys(monthlyPurchaseMap);
+  const avgPurchaseData = marginLabels.map(l => {
+    const data = monthlyPurchaseMap[l];
+    return data.count > 0 ? Math.round(data.total / data.count) : 0;
+  });
+  const avgResaleData = marginLabels.map(l => {
+    const data = monthlyResaleMap[l];
+    return data.count > 0 ? Math.round(data.total / data.count) : 0;
+  });
+
+  const ctxMargins = document.getElementById("chart-margins").getContext("2d");
+  overviewCharts.margins = new Chart(ctxMargins, {
+    type: "bar",
+    data: {
+      labels: marginLabels,
+      datasets: [
+        {
+          label: "Avg Purchase Price",
+          data: avgPurchaseData,
+          backgroundColor: "#f43f5e"
+        },
+        {
+          label: "Avg Resale Scrap Value",
+          data: avgResaleData,
+          backgroundColor: "#10b981"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: textColor } }
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+        y: { grid: { color: gridColor }, ticks: { color: textColor }, beginAtZero: true }
+      }
+    }
+  });
+
+  // 3. Stage Conversion Rates
+  const l1Leads = leads.filter(l => l.l1Details).length;
+  const l2Leads = leads.filter(l => !["new", "assigned", "pending_approval"].includes(l.status)).length;
+  const l3Leads = leads.filter(l => ["payment_confirmed", "picked_up", "scrapped"].includes(l.status)).length;
+  const l4Leads = leads.filter(l => ["picked_up", "scrapped"].includes(l.status)).length;
+
+  const conversionLabels = ["L1 Submit", "L2 Approved", "L3 Paid", "L4 Handover"];
+  const conversionData = [l1Leads, l2Leads, l3Leads, l4Leads];
+
+  const ctxConversion = document.getElementById("chart-conversion").getContext("2d");
+  overviewCharts.conversion = new Chart(ctxConversion, {
+    type: "bar",
+    data: {
+      labels: conversionLabels,
+      datasets: [{
+        label: "Leads Count",
+        data: conversionData,
+        backgroundColor: ["#6366f1", "#a855f7", "#ec4899", "#10b981"],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: textColor }, beginAtZero: true },
+        y: { grid: { color: gridColor }, ticks: { color: textColor } }
+      }
+    }
+  });
+
+  // 4. Top-performing field agents/pickers
+  const pickerCountMap = {};
+  leads.forEach(l => {
+    const pickup = l.pickupDetails || {};
+    const pickerId = pickup.pickedBy;
+    if (pickerId) {
+      pickerCountMap[pickerId] = (pickerCountMap[pickerId] || 0) + 1;
+    }
+  });
+
+  const topPickers = Object.entries(pickerCountMap)
+    .map(([id, count]) => ({
+      name: getAgentName(id),
+      count
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  const pickerLabels = topPickers.map(p => p.name);
+  const pickerData = topPickers.map(p => p.count);
+
+  const ctxAgents = document.getElementById("chart-agents").getContext("2d");
+  overviewCharts.agents = new Chart(ctxAgents, {
+    type: "doughnut",
+    data: {
+      labels: pickerLabels.length > 0 ? pickerLabels : ["No Pickups Yet"],
+      datasets: [{
+        data: pickerData.length > 0 ? pickerData : [1],
+        backgroundColor: pickerData.length > 0 ? ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"] : ["rgba(255, 255, 255, 0.1)"],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right", labels: { color: textColor } }
+      }
+    }
   });
 }
 
@@ -939,7 +1166,7 @@ async function saveL1AssignmentFromModal() {
 // L2 — APPROVALS PANEL
 // ──────────────────────────────────────────────
 function showL2TableView() {
-  document.getElementById("l2-table-view").style.display = "block";
+  document.getElementById("l2-table-view").style.display = "";
   document.getElementById("l2-detail-view").style.display = "none";
   selectedL2LeadId = null;
 }
@@ -947,7 +1174,7 @@ function showL2TableView() {
 function reviewL2Lead(leadId) {
   selectedL2LeadId = leadId;
   document.getElementById("l2-table-view").style.display = "none";
-  document.getElementById("l2-detail-view").style.display = "block";
+  document.getElementById("l2-detail-view").style.display = "";
   selectL2Lead(leadId);
 }
 
@@ -1404,7 +1631,7 @@ async function handleL2Reject() {
 // L3 — PAYMENTS PANEL
 // ──────────────────────────────────────────────
 function showL3TableView() {
-  document.getElementById("l3-table-view").style.display = "block";
+  document.getElementById("l3-table-view").style.display = "";
   document.getElementById("l3-detail-view").style.display = "none";
   selectedL3LeadId = null;
 }
@@ -1412,7 +1639,7 @@ function showL3TableView() {
 function reviewL3Lead(leadId) {
   selectedL3LeadId = leadId;
   document.getElementById("l3-table-view").style.display = "none";
-  document.getElementById("l3-detail-view").style.display = "block";
+  document.getElementById("l3-detail-view").style.display = "";
   selectL3Lead(leadId);
 }
 
@@ -1796,14 +2023,13 @@ function loadL4Panel() {
                class="premium-input picker-search-input" 
                value="${currentSelectedName}" 
                placeholder="Search picker..." 
-               style="height: 32px; font-size: 0.8rem; width: 160px; margin: 0;" 
+               style="height: 32px; font-size: 0.8rem; width: 160px; margin: 0; padding: 0 12px;" 
                autocomplete="off" 
                ${isAssigned ? "disabled" : ""} 
                onfocus="showTablePickerDropdown('${lead.id}', this)"
                oninput="filterTablePickerDropdown('${lead.id}', this.value)"
         >
         <input type="hidden" class="assign-dropdown" value="${currentSelectedId}">
-        <div class="autocomplete-dropdown table-picker-dropdown" style="display: none;"></div>
       </div>
     `;
 
@@ -1874,13 +2100,21 @@ function loadL4Panel() {
   }
 }
 
+let activeDropdownInput = null;
+
 window.showTablePickerDropdown = function(leadId, input) {
-  const wrapper = input.closest('.table-autocomplete-wrapper');
-  const dropdown = wrapper.querySelector('.table-picker-dropdown');
-  const pickers = Api.getUsers().filter(
-    (u) => u.permissions.includes("l4_picker_employee") && u.is_active,
+  activeDropdownInput = input;
+  const dropdown = document.getElementById('global-table-picker-dropdown');
+  const allUsers = Api.getUsers();
+  const pickers = allUsers.filter(
+    (u) => u.permissions && u.permissions.includes("l4_picker_employee") && u.is_active
   );
 
+  const rect = input.getBoundingClientRect();
+  dropdown.style.left = `${rect.left}px`;
+  dropdown.style.width = `${rect.width}px`;
+
+  // Determine dynamic height based on filtered results size (cap at 200px max)
   const renderDropdown = (filterText = "") => {
     dropdown.innerHTML = "";
     const filtered = pickers.filter(p => 
@@ -1900,6 +2134,7 @@ window.showTablePickerDropdown = function(leadId, input) {
       item.onclick = (e) => {
         e.stopPropagation();
         input.value = p.name;
+        const wrapper = input.closest('.table-autocomplete-wrapper');
         const hiddenInput = wrapper.querySelector('.assign-dropdown');
         hiddenInput.value = p.id;
         storeTempPickerSelection(leadId, p.id);
@@ -1918,63 +2153,107 @@ window.showTablePickerDropdown = function(leadId, input) {
     });
 
     dropdown.style.display = "block";
+    
+    // Position fixed container dynamically relative to viewport
+    const dropdownHeight = Math.min(dropdown.scrollHeight, 200);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+      dropdown.style.top = `${rect.top - dropdownHeight - 4}px`;
+    } else {
+      dropdown.style.top = `${rect.bottom + 4}px`;
+    }
   };
 
   renderDropdown(input.value);
 
-  // Bind close click handler
-  const closeHandler = (e) => {
-    if (!wrapper.contains(e.target)) {
-      dropdown.style.display = "none";
-      document.removeEventListener("click", closeHandler);
+  // Reposition fixed container dynamically on scroll or resize
+  const reposition = () => {
+    if (dropdown.style.display === "block") {
+      const r = input.getBoundingClientRect();
+      dropdown.style.left = `${r.left}px`;
+      dropdown.style.width = `${r.width}px`;
+      const dropdownHeight = Math.min(dropdown.scrollHeight, 200);
+      const spaceBelow = window.innerHeight - r.bottom;
+      if (spaceBelow < dropdownHeight && r.top > dropdownHeight) {
+        dropdown.style.top = `${r.top - dropdownHeight - 4}px`;
+      } else {
+        dropdown.style.top = `${r.bottom + 4}px`;
+      }
     }
   };
-  document.addEventListener("click", closeHandler);
+
+  const scrollContainer = input.closest('div[style*="overflow-y: auto"]');
+  const closeDropdown = (e) => {
+    if (e && e.target === input) return;
+    dropdown.style.display = "none";
+    document.removeEventListener("click", closeDropdown);
+    if (scrollContainer) scrollContainer.removeEventListener("scroll", reposition);
+    window.removeEventListener("resize", reposition);
+  };
+
+  setTimeout(() => {
+    document.addEventListener("click", closeDropdown);
+    if (scrollContainer) scrollContainer.addEventListener("scroll", reposition);
+    window.addEventListener("resize", reposition);
+  }, 10);
 };
 
 window.filterTablePickerDropdown = function(leadId, filterText) {
-  const input = document.querySelector(`.table-autocomplete-wrapper[data-lead-id="${leadId}"] .picker-search-input`);
-  if (input) {
-    const wrapper = input.closest('.table-autocomplete-wrapper');
-    const dropdown = wrapper.querySelector('.table-picker-dropdown');
-    const pickers = Api.getUsers().filter(
-      (u) => u.permissions.includes("l4_picker_employee") && u.is_active,
-    );
+  const dropdown = document.getElementById('global-table-picker-dropdown');
+  const pickers = Api.getUsers().filter(
+    (u) => u.permissions.includes("l4_picker_employee") && u.is_active,
+  );
 
-    dropdown.innerHTML = "";
-    const filtered = pickers.filter(p => 
-      p.name.toLowerCase().includes(filterText.toLowerCase()) || 
-      p.email.toLowerCase().includes(filterText.toLowerCase())
-    );
+  dropdown.innerHTML = "";
+  const filtered = pickers.filter(p => 
+    p.name.toLowerCase().includes(filterText.toLowerCase()) || 
+    p.email.toLowerCase().includes(filterText.toLowerCase())
+  );
 
-    if (filtered.length === 0) {
-      dropdown.innerHTML = `<div class="autocomplete-item no-matches">No matching pickers found</div>`;
-      dropdown.style.display = "block";
-      return;
-    }
+  if (filtered.length === 0) {
+    dropdown.innerHTML = `<div class="autocomplete-item no-matches">No matching pickers found</div>`;
+    dropdown.style.display = "block";
+    return;
+  }
 
-    filtered.forEach(p => {
-      const item = document.createElement("div");
-      item.className = "autocomplete-item";
-      item.onclick = (e) => {
-        e.stopPropagation();
-        input.value = p.name;
+  filtered.forEach(p => {
+    const item = document.createElement("div");
+    item.className = "autocomplete-item";
+    item.onclick = (e) => {
+      e.stopPropagation();
+      if (activeDropdownInput) {
+        activeDropdownInput.value = p.name;
+        const wrapper = activeDropdownInput.closest('.table-autocomplete-wrapper');
         const hiddenInput = wrapper.querySelector('.assign-dropdown');
         hiddenInput.value = p.id;
-        storeTempPickerSelection(leadId, p.id);
-        dropdown.style.display = "none";
-      };
+      }
+      storeTempPickerSelection(leadId, p.id);
+      dropdown.style.display = "none";
+    };
 
-      const initials = p.name ? p.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "PK";
-      item.innerHTML = `
-        <div class="autocomplete-avatar">${initials}</div>
-        <div class="autocomplete-item-details">
-          <span class="autocomplete-item-name">${p.name}</span>
-          <span class="autocomplete-item-sub">${p.email}</span>
-        </div>
-      `;
-      dropdown.appendChild(item);
-    });
+    const initials = p.name ? p.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "PK";
+    item.innerHTML = `
+      <div class="autocomplete-avatar">${initials}</div>
+      <div class="autocomplete-item-details">
+        <span class="autocomplete-item-name">${p.name}</span>
+        <span class="autocomplete-item-sub">${p.email}</span>
+      </div>
+    `;
+    dropdown.appendChild(item);
+  });
+
+  dropdown.style.display = "block";
+  
+  // Re-adjust position in case list size changed
+  if (activeDropdownInput) {
+    const rect = activeDropdownInput.getBoundingClientRect();
+    const dropdownHeight = Math.min(dropdown.scrollHeight, 200);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+      dropdown.style.top = `${rect.top - dropdownHeight - 4}px`;
+    } else {
+      dropdown.style.top = `${rect.bottom + 4}px`;
+    }
   }
 };
 
@@ -3293,7 +3572,7 @@ function handleReceiptFileSelected(event) {
 // ──────────────────────────────────────────────
 function showFinalizedTableView() {
   selectedFinalizedLeadId = null;
-  document.getElementById("finalized-table-view").style.display = "block";
+  document.getElementById("finalized-table-view").style.display = "";
   document.getElementById("finalized-detail-view").style.display = "none";
 }
 
@@ -3321,7 +3600,7 @@ function getFileUrl(file) {
 function viewFinalizedLead(leadId) {
   selectedFinalizedLeadId = leadId;
   document.getElementById("finalized-table-view").style.display = "none";
-  document.getElementById("finalized-detail-view").style.display = "block";
+  document.getElementById("finalized-detail-view").style.display = "";
 
   const lead = Api.getLeadById(leadId);
   if (!lead) return;

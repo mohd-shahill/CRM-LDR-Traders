@@ -1,7 +1,9 @@
 /**
  * API client to communicate with the Node.js/Express backend
  */
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:5000/api`;
+const API_BASE = window.location.port === "5500" || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? `${window.location.protocol}//${window.location.hostname}:5000/api`
+  : `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}/api`;
 
 function getPortalName() {
   let portal = 'employee';

@@ -11,10 +11,10 @@ function initSocketConnection() {
   // API_BASE is e.g. "http://localhost:5000/api"
   const socketUrl = API_BASE.replace('/api', '');
 
-  // Load socket.io script dynamically if not already loaded
+  // Load socket.io script dynamically if not already loaded from the backend
   if (typeof io === 'undefined') {
     const script = document.createElement('script');
-    script.src = 'https://cdn.socket.io/4.7.5/socket.io.min.js';
+    script.src = socketUrl + '/socket.io/socket.io.js';
     script.onload = () => connectSocket(socketUrl, user.id);
     document.head.appendChild(script);
   } else {
